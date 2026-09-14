@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   experimental: {
-    viewTransition: true,
+    // viewTransition ya no es experimental desde Next 16.3: funciona sin configuracion
     serverActions: {
       bodySizeLimit: '5mb',
     },
