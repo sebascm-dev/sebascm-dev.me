@@ -55,9 +55,9 @@ export default function Hero({ profile }: HeroProps) {
 
       <ActivityGraph />
 
-      {/* Contenido: empuja hacia abajo para que los picos del gráfico respiren arriba */}
-      <div className="flex-1 flex items-center">
-        <div className="w-full max-w-5xl mx-auto px-6 py-16 pointer-events-auto relative z-10">
+      {/* Contenido: anclado arriba para dejar libre la zona de los picos del gráfico */}
+      <div className="flex-1 flex items-start">
+        <div className="w-full max-w-5xl mx-auto px-6 pt-24 sm:pt-28 pb-16 pointer-events-auto relative z-10">
           <motion.div variants={container} initial="hidden" animate="show">
 
             {/* Badge estado laboral */}
