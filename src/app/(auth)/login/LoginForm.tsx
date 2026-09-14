@@ -1,8 +1,8 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { login, type LoginResult } from '@/app/actions/auth'
 import AnimatedInput from '@/components/ui/AnimatedInput'
 
 type FormStatus = 'idle' | 'pending' | 'error'
@@ -26,22 +26,28 @@ export default function LoginForm() {
     setStatus('pending')
     setErrorMsg('')
 
-    const result = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,
-    })
-
-    if (result?.error) {
-      // Same message for wrong email or wrong password — prevents enumeration
+    let result: LoginResult
+    try {
+      result = await login(email, password)
+    } catch {
+      // The Server Action never ran: network down or server unavailable
       setStatus('error')
-      setErrorMsg('Credenciales incorrectas')
+      setErrorMsg('No se pudo conectar. Inténtalo de nuevo.')
+      return
+    }
+
+    if (!result.success) {
+      setStatus('error')
+      setErrorMsg(result.error)
       // Clear password, keep email
       setPassword('')
       if (passwordRef.current) passwordRef.current.focus()
-    } else {
-      router.push('/admin')
+      return
     }
+
+    router.push('/admin')
+    // Refresh so Server Components re-render with the new session cookies
+    router.refresh()
   }
 
   const isPending = status === 'pending'

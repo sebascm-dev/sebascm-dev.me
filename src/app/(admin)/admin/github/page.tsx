@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
-import { auth } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { fetchReposWithStats, fetchLanguageBreakdown } from '@/lib/github.server'
 import { SummaryStats } from './_components/SummaryStats'
 import { ContributionsChart } from './_components/ContributionsChart'
@@ -39,8 +38,7 @@ async function fetchContributions(): Promise<ContributionDay[]> {
 }
 
 export default async function GithubPage() {
-  const session = await auth()
-  if (!session) redirect('/login')
+  await requireAdmin()
 
   const [repos, languages, contributions] = await Promise.all([
     fetchReposWithStats(),

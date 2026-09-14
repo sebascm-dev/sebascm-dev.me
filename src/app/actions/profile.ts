@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { profile } from '@/lib/schema'
 import { uploadFile, deleteFile } from '@/lib/r2'
-import { auth } from '@/lib/auth'
+import { getAdminUser } from '@/lib/auth'
 
 export type ProfileActionResult = {
   success: boolean
@@ -18,8 +18,8 @@ export async function getProfile() {
 }
 
 export async function updateProfile(_prevState: ProfileActionResult, formData: FormData): Promise<ProfileActionResult> {
-  const session = await auth()
-  if (!session?.user) return { success: false, error: 'No autorizado.' }
+  const admin = await getAdminUser()
+  if (!admin) return { success: false, error: 'No autorizado.' }
 
   try {
     const existing = await getProfile()

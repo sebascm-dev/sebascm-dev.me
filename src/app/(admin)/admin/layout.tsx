@@ -1,8 +1,8 @@
 // Admin shell layout — Server Component with defense-in-depth auth check
 import Image from 'next/image'
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { auth, signOut } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
+import { logout } from '@/app/actions/auth'
 import { about } from '@/data/about'
 import { getProfile } from '@/app/actions/profile'
 import { IconLogout } from '@tabler/icons-react'
@@ -28,8 +28,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await auth()
-  if (!session) redirect('/login')
+  await requireAdmin()
 
   const profileData = await getProfile()
   const avatarSrc = profileData?.avatarUrl ?? about.photo
@@ -62,12 +61,7 @@ export default async function AdminLayout({
 
         {/* Logout — pinned to bottom */}
         <div className="px-3 py-4 border-t border-[#1a1a1a]">
-          <form
-            action={async () => {
-              'use server'
-              await signOut({ redirectTo: '/' })
-            }}
-          >
+          <form action={logout}>
             <button
               type="submit"
               className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1a] transition-colors cursor-pointer"

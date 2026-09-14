@@ -3,18 +3,27 @@ import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 
 // Vitest hoists vi.mock calls — use vi.hoisted() for variables used in factories
-const mockSignIn = vi.hoisted(() => vi.fn())
+const mockLogin = vi.hoisted(() => vi.fn())
 const mockRouterPush = vi.hoisted(() => vi.fn())
+const mockRouterRefresh = vi.hoisted(() => vi.fn())
 
-vi.mock('next-auth/react', () => ({
-  signIn: mockSignIn,
+vi.mock('@/app/actions/auth', () => ({
+  login: mockLogin,
 }))
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockRouterPush }),
+  useRouter: () => ({ push: mockRouterPush, refresh: mockRouterRefresh }),
 }))
 
 import LoginForm from '../LoginForm'
+
+/** Fills both fields and submits the form */
+async function submit(email: string, password: string) {
+  const user = userEvent.setup()
+  await user.type(screen.getByLabelText(/email/i), email)
+  await user.type(screen.getByLabelText(/contraseña/i), password)
+  await user.click(screen.getByRole('button'))
+}
 
 describe('LoginForm', () => {
   beforeEach(() => {
@@ -30,15 +39,11 @@ describe('LoginForm', () => {
   })
 
   it('disables button and shows "Entrando…" while pending', async () => {
-    // signIn never resolves — stays pending
-    mockSignIn.mockReturnValue(new Promise(() => {}))
+    // login never resolves — stays pending
+    mockLogin.mockReturnValue(new Promise(() => {}))
 
-    const user = userEvent.setup()
     render(<LoginForm />)
-
-    await user.type(screen.getByLabelText(/email/i), 'admin@test.com')
-    await user.type(screen.getByLabelText(/contraseña/i), 'password123')
-    await user.click(screen.getByRole('button'))
+    await submit('admin@test.com', 'password123')
 
     await waitFor(() => {
       expect(screen.getByRole('button')).toBeDisabled()
@@ -46,18 +51,24 @@ describe('LoginForm', () => {
     })
   })
 
-  it('shows "Credenciales incorrectas" and clears password on auth failure', async () => {
-    mockSignIn.mockResolvedValue({ error: 'CredentialsSignin' })
+  it('sends the typed credentials to the login action', async () => {
+    mockLogin.mockResolvedValue({ success: true })
 
-    const user = userEvent.setup()
     render(<LoginForm />)
+    await submit('admin@test.com', 'password123')
 
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith('admin@test.com', 'password123')
+    })
+  })
+
+  it('shows the error from the action and clears the password on failure', async () => {
+    mockLogin.mockResolvedValue({ success: false, error: 'Credenciales incorrectas' })
+
+    render(<LoginForm />)
     const emailInput = screen.getByLabelText(/email/i)
     const passwordInput = screen.getByLabelText(/contraseña/i)
-
-    await user.type(emailInput, 'admin@test.com')
-    await user.type(passwordInput, 'wrongpassword')
-    await user.click(screen.getByRole('button'))
+    await submit('admin@test.com', 'wrongpassword')
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/credenciales incorrectas/i)
@@ -66,20 +77,31 @@ describe('LoginForm', () => {
     // Password cleared, email kept
     expect(passwordInput).toHaveValue('')
     expect(emailInput).toHaveValue('admin@test.com')
+    expect(mockRouterPush).not.toHaveBeenCalled()
+  })
+
+  it('shows a connection error when the login action cannot be reached', async () => {
+    mockLogin.mockRejectedValue(new Error('Failed to fetch'))
+
+    render(<LoginForm />)
+    await submit('admin@test.com', 'password123')
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/no se pudo conectar/i)
+    })
+    expect(screen.getByRole('button')).not.toBeDisabled()
   })
 
   it('redirects to /admin on successful login', async () => {
-    mockSignIn.mockResolvedValue({ error: null })
+    mockLogin.mockResolvedValue({ success: true })
 
-    const user = userEvent.setup()
     render(<LoginForm />)
-
-    await user.type(screen.getByLabelText(/email/i), 'admin@test.com')
-    await user.type(screen.getByLabelText(/contraseña/i), 'correctpassword')
-    await user.click(screen.getByRole('button'))
+    await submit('admin@test.com', 'correctpassword')
 
     await waitFor(() => {
       expect(mockRouterPush).toHaveBeenCalledWith('/admin')
     })
+    // Refresh so Server Components re-render with the new session cookies
+    expect(mockRouterRefresh).toHaveBeenCalled()
   })
 })

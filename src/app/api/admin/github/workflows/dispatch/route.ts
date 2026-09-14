@@ -1,11 +1,11 @@
-import { auth } from '@/lib/auth'
+import { getAdminUser } from '@/lib/auth'
 import { dispatchWorkflow } from '@/lib/github.server'
 import { NextResponse } from 'next/server'
 import type { WorkflowDispatchPayload } from '@/lib/github.types'
 
 export async function POST(req: Request) {
-  const session = await auth()
-  if (!session) {
+  const admin = await getAdminUser()
+  if (!admin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
