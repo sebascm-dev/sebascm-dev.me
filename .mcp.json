@@ -2,7 +2,7 @@
   "mcpServers": {
     "supabase": {
       "type": "http",
-      "url": "https://supabase.sebascm.me/mcp?features=docs%2Cdatabase%2Cdebugging%2Cdevelopment"
+      "url": "http://localhost:3333/api/mcp?features=docs%2Cdatabase%2Cdebugging%2Cdevelopment&read_only=true"
     }
   }
 }
