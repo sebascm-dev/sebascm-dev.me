@@ -3,7 +3,9 @@ import { toast as sonnerToast } from 'sonner'
 function playNotification() {
   const audio = new Audio('/sounds/notificacion.mp3')
   audio.volume = 0.4
-  audio.play().catch(() => {
+  // play() devuelve una Promise en navegadores modernos, pero undefined en
+  // entornos sin soporte de media (jsdom, navegadores antiguos): encadenamos solo si existe
+  audio.play()?.catch(() => {
     // El navegador puede bloquear el audio si no hubo interacción previa — ignoramos silenciosamente
   })
 }
