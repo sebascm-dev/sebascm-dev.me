@@ -1,7 +1,7 @@
 // Server component — metadata + renders LoginForm
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { getAdminUser } from '@/lib/auth'
 import LoginForm from './LoginForm'
 
 // Keep this page off search engines — the admin panel is a secret easter egg
@@ -13,9 +13,10 @@ export const metadata: Metadata = {
 }
 
 export default async function LoginPage() {
-  // Redirect authenticated users straight to admin
-  const session = await auth()
-  if (session) redirect('/admin')
+  // Send the signed-in admin straight to the panel. Only the admin: redirecting
+  // any session would loop, because /admin sends non-admins back here.
+  const admin = await getAdminUser()
+  if (admin) redirect('/admin')
 
   return <LoginForm />
 }
