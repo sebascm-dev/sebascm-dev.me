@@ -9,7 +9,6 @@ import { FaLinkedin } from 'react-icons/fa'
 import { HiDocumentArrowDown } from 'react-icons/hi2'
 import AnimatedInput from '@/components/ui/AnimatedInput'
 import AnimatedTextarea from '@/components/ui/AnimatedTextarea'
-import Footer from '@/components/layout/Footer'
 
 interface FormState {
   name: string

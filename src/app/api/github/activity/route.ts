@@ -1,5 +1,26 @@
 import { NextResponse } from 'next/server';
 
+/** Formas parciales de la respuesta GraphQL de GitHub que realmente consumimos */
+interface ContributionDay {
+  date: string;
+  contributionCount: number;
+}
+
+interface ContributionWeek {
+  contributionDays: ContributionDay[];
+}
+
+interface RepositoryNode {
+  name: string;
+  createdAt: string;
+  url: string;
+  defaultBranchRef?: {
+    target?: {
+      history?: { totalCount?: number };
+    };
+  };
+}
+
 export const revalidate = 3600;
 
 export async function GET() {
@@ -74,15 +95,15 @@ export async function GET() {
     const userData = result.data.user;
     
     const history = userData.contributionsCollection.contributionCalendar.weeks
-      .flatMap((week: any) => week.contributionDays)
-      .map((day: any) => ({
+      .flatMap((week: ContributionWeek) => week.contributionDays)
+      .map((day: ContributionDay) => ({
         date: day.date,
         count: day.contributionCount
       }));
 
     const repos = userData.repositories.nodes
-      .filter((repo: any) => new Date(repo.createdAt) >= new Date(from))
-      .map((repo: any) => ({
+      .filter((repo: RepositoryNode) => new Date(repo.createdAt) >= new Date(from))
+      .map((repo: RepositoryNode) => ({
         name: repo.name,
         createdAt: repo.createdAt,
         url: repo.url,
@@ -90,7 +111,7 @@ export async function GET() {
       }));
 
     return NextResponse.json({ history, repos });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ history: [], repos: [] }, { status: 500 });
   }
 }

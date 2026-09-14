@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -28,10 +28,24 @@ interface DataPoint {
   date: string;
 }
 
-const CustomDot = (props: any) => {
+
+/** Props que Recharts pasa a un dot/shape custom */
+interface CustomShapeProps {
+  cx?: number;
+  cy?: number;
+  payload?: DataPoint;
+}
+
+/** Props que Recharts pasa a un tooltip custom */
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: { payload: DataPoint }[];
+}
+
+const CustomDot = (props: CustomShapeProps) => {
   const { cx, cy, payload } = props;
-  
-  if (!payload.repos || payload.repos.length === 0) return null;
+
+  if (!payload?.repos || payload.repos.length === 0) return null;
 
   return (
     <g>
@@ -47,12 +61,13 @@ const CustomDot = (props: any) => {
   );
 };
 
-const CustomActiveDot = (props: any) => {
+const CustomActiveDot = (props: CustomShapeProps) => {
   const { cx, cy, payload } = props;
-  const hasActivity = payload.repos && payload.repos.length > 0;
+  const hasActivity = payload?.repos && payload.repos.length > 0;
   if (hasActivity) return null; // Los puntos con actividad ya tienen tooltip
+  if (cx == null || cy == null) return null; // Sin coordenadas no hay nada que dibujar
 
-  const totalCommits: number = payload.commits ?? 0;
+  const totalCommits: number = payload?.commits ?? 0;
 
   return (
     <g>
@@ -72,7 +87,7 @@ const CustomActiveDot = (props: any) => {
   );
 };
 
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     if (!data.repos || data.repos.length === 0) return null;
@@ -141,7 +156,8 @@ const CustomTooltip = ({ active, payload }: any) => {
 export default function ActivityGraph() {
   const [data, setData] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(true);
-  const [revealed, setRevealed] = useState(false);
+  // Solo interesa el efecto de re-render del setter; el valor nunca se lee
+  const [, setRevealed] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -213,8 +229,9 @@ export default function ActivityGraph() {
               x={data.length - 1}
               y={data[data.length - 1].activity}
               r={0}
-              shape={(props: any) => {
+              shape={(props: CustomShapeProps) => {
                 const { cx, cy } = props;
+                if (cx == null || cy == null) return <g />; // Recharts espera un elemento SVG
                 return (
                   <g>
                     {/* Label NOW — a la izquierda arriba del punto */}
