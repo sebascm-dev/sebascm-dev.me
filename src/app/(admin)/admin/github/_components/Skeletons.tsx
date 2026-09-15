@@ -10,11 +10,12 @@ export function ActivitySkeleton() {
   return (
     <div className="space-y-6">
       <span role="status" className="sr-only">Cargando actividad de GitHub…</span>
-      <div aria-hidden="true" className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-[1.7fr_1fr_1fr_1fr]">
-        <div className={`${block} col-span-2 h-[140px] sm:col-span-3 lg:col-span-1`} />
+      <div aria-hidden="true" className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-[1.6fr_1fr_1fr_1fr_1fr]">
+        <div className={`${block} col-span-2 h-[140px] sm:col-span-4 lg:col-span-1`} />
         <div className={`${block} h-[140px]`} />
         <div className={`${block} h-[140px]`} />
-        <div className={`${block} col-span-2 h-[140px] sm:col-span-1`} />
+        <div className={`${block} h-[140px]`} />
+        <div className={`${block} h-[140px]`} />
       </div>
       <div aria-hidden="true" className={`${block} h-[260px]`} />
       <div aria-hidden="true" className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">

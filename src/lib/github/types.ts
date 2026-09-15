@@ -97,6 +97,15 @@ export interface WeekdayCount {
   count: number
 }
 
+export interface PullRequestCounts {
+  /** Opened during the window */
+  opened: number
+  /** Merged during the window, wherever they were opened */
+  merged: number
+  /** Opened during the window and still open (drafts included) */
+  open: number
+}
+
 export interface ActivitySummary {
   total: number
   previousTotal: number
@@ -113,6 +122,7 @@ export interface ActivitySummary {
   perRepo: RepoCount[]
   weekdays: WeekdayCount[]
   feed: FeedItem[]
+  pullRequests: PullRequestCounts
   /** Latest commit in the previous window, used by the empty state */
   lastPreviousCommitAt: string | null
 }

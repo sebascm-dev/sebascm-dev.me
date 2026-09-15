@@ -111,6 +111,29 @@ describe('summarizeActivity', () => {
     ])
   })
 
+  it('counts pull requests opened and merged in the current window, by Madrid day', () => {
+    const withPullRequests = summarizeActivity(
+      data({
+        pullRequests: [
+          pullRequest({ number: 1, createdAt: '2026-09-14T10:00:00Z' }),
+          // 22:30 UTC on the 8th is already the 9th (first day of the window) in Madrid
+          pullRequest({ number: 2, createdAt: '2026-09-08T22:30:00Z', state: 'MERGED', mergedAt: '2026-09-10T10:00:00Z' }),
+          pullRequest({ number: 3, createdAt: '2026-09-12T10:00:00Z', state: 'CLOSED', closedAt: '2026-09-13T10:00:00Z' }),
+          // Opened in the previous window but merged in this one
+          pullRequest({ number: 4, createdAt: '2026-09-01T10:00:00Z', state: 'MERGED', mergedAt: '2026-09-11T10:00:00Z' }),
+          pullRequest({ number: 5, createdAt: '2026-09-05T10:00:00Z' }),
+        ],
+      }),
+      windows
+    )
+
+    expect(withPullRequests.pullRequests).toEqual({ opened: 3, merged: 2, open: 1 })
+  })
+
+  it('reports zero pull requests when there are none', () => {
+    expect(summary.pullRequests).toEqual({ opened: 0, merged: 0, open: 0 })
+  })
+
   it('orders weekdays from Monday to Sunday', () => {
     expect(summary.weekdays.map((w) => w.label)).toEqual(['L', 'M', 'X', 'J', 'V', 'S', 'D'])
     // 2026-09-15 is a Tuesday and 2026-09-13 a Sunday
