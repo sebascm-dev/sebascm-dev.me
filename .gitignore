@@ -43,3 +43,5 @@ next-env.d.ts
 # IA
 .atl
 .claude
+# Brainstorming visual companion (local mockups)
+.superpowers/
