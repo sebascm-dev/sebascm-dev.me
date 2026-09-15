@@ -8,11 +8,11 @@ describe('parseRange', () => {
     }
   })
 
-  it('falls back to 30d when the value is missing or invalid', () => {
-    expect(DEFAULT_RANGE).toBe('30d')
-    expect(parseRange(undefined)).toBe('30d')
-    expect(parseRange('')).toBe('30d')
-    expect(parseRange('1y')).toBe('30d')
+  it('falls back to 12m when the value is missing or invalid', () => {
+    expect(DEFAULT_RANGE).toBe('12m')
+    expect(parseRange(undefined)).toBe('12m')
+    expect(parseRange('')).toBe('12m')
+    expect(parseRange('1y')).toBe('12m')
   })
 
   it('uses the first value when the param is repeated', () => {

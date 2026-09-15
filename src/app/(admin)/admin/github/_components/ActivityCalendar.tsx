@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { IconCalendar, IconTable } from '@tabler/icons-react'
 import { activityLevel, weekdayIndex } from '@/lib/github/activity'
 import { formatDayLong, plural } from '@/lib/github/format'
+import { addDays } from '@/lib/github/range'
 import type { DayCount, RangeKey } from '@/lib/github/types'
 
 // Ordinal ramp validated with the dataviz checker against the #0d0d0d surface.
@@ -12,10 +13,8 @@ const LEVEL_COLORS = ['#1a1a1a', '#11606d', '#0e8394', '#17aec2', '#22d3ee'] as 
 
 const LEGEND_SWATCH = 12
 const CELL_GAP = 3
-// Week-grid cells stretch to the card width between these bounds; below the
-// minimum the grid scrolls horizontally instead of shrinking (mobile, 12m).
+// Below this cell width the week grid scrolls horizontally instead of shrinking (12m on a phone)
 const MIN_CELL = 10
-const MAX_CELL = 26
 /** Weekday label column (12px) + gap (8px) */
 const LABEL_COLUMN = 20
 
@@ -23,8 +22,21 @@ const ROW_LABELS = ['L', '', 'X', '', 'V', '', 'D']
 const WEEKDAY_SHORT = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom']
 const MONTH_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic']
 
-const WEEK_MOVES: Record<string, number> = { ArrowRight: 7, ArrowLeft: -7, ArrowDown: 1, ArrowUp: -1 }
-const DAY_MOVES: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 1, ArrowUp: -1 }
+/**
+ * - strip: 7 days side by side (7d)
+ * - month: a wall calendar, weekdays as columns and weeks as rows (30d)
+ * - weeks: GitHub-style heatmap, weeks as columns and weekdays as rows (90d, 12m)
+ */
+type Layout = 'strip' | 'month' | 'weeks'
+
+const LAYOUTS: Record<RangeKey, Layout> = { '7d': 'strip', '30d': 'month', '90d': 'weeks', '12m': 'weeks' }
+
+// Arrow keys follow what is visually adjacent in each layout
+const MOVES: Record<Layout, Record<string, number>> = {
+  strip: { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 1, ArrowUp: -1 },
+  month: { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 7, ArrowUp: -7 },
+  weeks: { ArrowRight: 7, ArrowLeft: -7, ArrowDown: 1, ArrowUp: -1 },
+}
 
 interface ActivityCalendarProps {
   days: DayCount[]
@@ -32,6 +44,8 @@ interface ActivityCalendarProps {
 }
 
 const labelFor = (day: DayCount) => `${plural(day.count, 'commit', 'commits')}, ${formatDayLong(day.date)}`
+/** "7 sept" */
+const shortDate = (date: string) => `${Number(date.slice(8, 10))} ${MONTH_SHORT[Number(date.slice(5, 7)) - 1]}`
 
 export function ActivityCalendar({ days, range }: ActivityCalendarProps) {
   const [view, setView] = useState<'calendar' | 'table'>('calendar')
@@ -47,10 +61,13 @@ export function ActivityCalendar({ days, range }: ActivityCalendarProps) {
     if (element) element.scrollLeft = element.scrollWidth
   }, [range, view])
 
-  const isWeekGrid = range !== '7d'
+  const layout = LAYOUTS[range]
   const max = days.reduce((highest, day) => Math.max(highest, day.count), 0)
   const shownDay = highlighted === null ? null : days[highlighted]
   const activeDays = days.filter((day) => day.count > 0)
+  // Blank slots before the first day so that every column (or row) starts on a Monday
+  const leadingBlanks = days.length > 0 ? weekdayIndex(days[0].date) : 0
+  const weekCount = Math.ceil((leadingBlanks + days.length) / 7)
 
   function focusDay(index: number) {
     const clamped = Math.min(days.length - 1, Math.max(0, index))
@@ -64,7 +81,7 @@ export function ActivityCalendar({ days, range }: ActivityCalendarProps) {
       focusDay(event.key === 'Home' ? 0 : days.length - 1)
       return
     }
-    const delta = (isWeekGrid ? WEEK_MOVES : DAY_MOVES)[event.key]
+    const delta = MOVES[layout][event.key]
     if (delta === undefined) return
     event.preventDefault()
     focusDay(index + delta)
@@ -92,13 +109,107 @@ export function ActivityCalendar({ days, range }: ActivityCalendarProps) {
     )
   }
 
-  const leadingBlanks = days.length > 0 ? weekdayIndex(days[0].date) : 0
-  const columns = Math.ceil((leadingBlanks + days.length) / 7)
-  const monthLabels = days
-    .map((day, index) => ({ day, column: Math.floor((leadingBlanks + index) / 7) }))
-    .filter(({ day }, index) => day.date.endsWith('-01') || index === 0)
-    .filter(({ column }, index, labels) => index === labels.length - 1 || labels[index + 1].column - column >= 3)
-  const gridColumns = `repeat(${columns}, minmax(0, 1fr))`
+  function renderStrip() {
+    return (
+      <div className="grid grid-cols-7 gap-2">
+        {days.map((day, index) => (
+          <div key={day.date} className="flex flex-col items-center gap-1.5">
+            {renderCell(day, index, 'h-10 w-full rounded-md')}
+            <span className="text-xs text-gray-400">
+              {WEEKDAY_SHORT[weekdayIndex(day.date)]} {Number(day.date.slice(8, 10))}
+            </span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  function renderMonth() {
+    return (
+      <div className="grid gap-1" style={{ gridTemplateColumns: 'auto repeat(7, minmax(0, 1fr))' }}>
+        <span aria-hidden="true" />
+        {WEEKDAY_SHORT.map((weekday) => (
+          <span key={weekday} aria-hidden="true" className="pb-1 text-center text-xs text-gray-400">
+            {weekday}
+          </span>
+        ))}
+        {Array.from({ length: weekCount }, (_, week) => {
+          const firstSlot = week * 7 - leadingBlanks
+          return [
+            <span
+              key={`week-${week}`}
+              aria-hidden="true"
+              className="flex items-center justify-end whitespace-nowrap pr-2 text-xs text-gray-400"
+            >
+              {/* The Monday that starts the row, even when it falls before the range */}
+              {days.length > 0 && shortDate(addDays(days[0].date, firstSlot))}
+            </span>,
+            ...Array.from({ length: 7 }, (_, weekday) => {
+              const index = firstSlot + weekday
+              const day = days[index]
+              return day ? (
+                renderCell(day, index, 'h-8 w-full rounded-md')
+              ) : (
+                <span key={`blank-${week}-${weekday}`} aria-hidden="true" />
+              )
+            }),
+          ]
+        })}
+      </div>
+    )
+  }
+
+  function renderWeeks() {
+    const gridColumns = `repeat(${weekCount}, minmax(0, 1fr))`
+    const monthLabels = days
+      .map((day, index) => ({ day, column: Math.floor((leadingBlanks + index) / 7) }))
+      .filter(({ day }, index) => day.date.endsWith('-01') || index === 0)
+      .filter(({ column }, index, labels) => index === labels.length - 1 || labels[index + 1].column - column >= 3)
+
+    return (
+      <div ref={scroller} className="overflow-x-auto pb-1">
+        <div className="flex gap-2" style={{ minWidth: LABEL_COLUMN + weekCount * (MIN_CELL + CELL_GAP) }}>
+          <div aria-hidden="true" className="flex w-3 shrink-0 flex-col text-[10px] leading-none text-gray-400">
+            <span className="mb-[5px] h-3 shrink-0" />
+            <div className="grid flex-1" style={{ gridTemplateRows: 'repeat(7, minmax(0, 1fr))', rowGap: CELL_GAP }}>
+              {ROW_LABELS.map((label, index) => (
+                <span key={index} className="flex items-center">{label}</span>
+              ))}
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div
+              aria-hidden="true"
+              className="mb-[5px] grid h-3 text-[10px] leading-none text-gray-400"
+              style={{ gridTemplateColumns: gridColumns, columnGap: CELL_GAP }}
+            >
+              {monthLabels.map(({ day, column }) => (
+                <span key={day.date} className="whitespace-nowrap" style={{ gridColumnStart: column + 1 }}>
+                  {MONTH_SHORT[Number(day.date.slice(5, 7)) - 1]}
+                </span>
+              ))}
+            </div>
+            <div
+              className="grid"
+              style={{
+                gridTemplateColumns: gridColumns,
+                gridTemplateRows: 'repeat(7, auto)',
+                gridAutoFlow: 'column',
+                gap: CELL_GAP,
+              }}
+            >
+              {Array.from({ length: leadingBlanks }, (_, index) => (
+                <span key={`blank-${index}`} aria-hidden="true" />
+              ))}
+              {/* Square while narrow (12m); capped height so few weeks (90d) widen instead of towering */}
+              {days.map((day, index) => renderCell(day, index, 'aspect-square max-h-7 w-full rounded-[3px]'))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <section aria-labelledby="activity-calendar-title" className="min-w-0 rounded-xl border border-[#1a1a1a] bg-[#0d0d0d] p-5">
@@ -107,7 +218,7 @@ export function ActivityCalendar({ days, range }: ActivityCalendarProps) {
           Actividad diaria
         </h2>
         <div className="flex items-center gap-4">
-          {isWeekGrid && view === 'calendar' && (
+          {layout !== 'strip' && view === 'calendar' && (
             <div className="flex items-center gap-1 text-xs text-gray-400" aria-hidden="true">
               <span>Menos</span>
               {LEVEL_COLORS.map((color) => (
@@ -155,64 +266,12 @@ export function ActivityCalendar({ days, range }: ActivityCalendarProps) {
             )}
           </tbody>
         </table>
-      ) : isWeekGrid ? (
-        <div ref={scroller} className="overflow-x-auto pb-1">
-          <div
-            className="flex gap-2"
-            style={{
-              minWidth: LABEL_COLUMN + columns * (MIN_CELL + CELL_GAP),
-              maxWidth: LABEL_COLUMN + columns * (MAX_CELL + CELL_GAP),
-            }}
-          >
-            <div aria-hidden="true" className="flex w-3 shrink-0 flex-col text-[10px] leading-none text-gray-400">
-              <span className="mb-[5px] h-3 shrink-0" />
-              <div className="grid flex-1" style={{ gridTemplateRows: 'repeat(7, minmax(0, 1fr))', rowGap: CELL_GAP }}>
-                {ROW_LABELS.map((label, index) => (
-                  <span key={index} className="flex items-center">{label}</span>
-                ))}
-              </div>
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div
-                aria-hidden="true"
-                className="mb-[5px] grid h-3 text-[10px] leading-none text-gray-400"
-                style={{ gridTemplateColumns: gridColumns, columnGap: CELL_GAP }}
-              >
-                {monthLabels.map(({ day, column }) => (
-                  <span key={day.date} className="whitespace-nowrap" style={{ gridColumnStart: column + 1 }}>
-                    {MONTH_SHORT[Number(day.date.slice(5, 7)) - 1]}
-                  </span>
-                ))}
-              </div>
-              <div
-                className="grid"
-                style={{
-                  gridTemplateColumns: gridColumns,
-                  gridTemplateRows: 'repeat(7, auto)',
-                  gridAutoFlow: 'column',
-                  gap: CELL_GAP,
-                }}
-              >
-                {Array.from({ length: leadingBlanks }, (_, index) => (
-                  <span key={`blank-${index}`} aria-hidden="true" />
-                ))}
-                {days.map((day, index) => renderCell(day, index, 'aspect-square w-full rounded-[3px]'))}
-              </div>
-            </div>
-          </div>
-        </div>
+      ) : layout === 'strip' ? (
+        renderStrip()
+      ) : layout === 'month' ? (
+        renderMonth()
       ) : (
-        <div className="grid grid-cols-7 gap-2">
-          {days.map((day, index) => (
-            <div key={day.date} className="flex flex-col items-center gap-1.5">
-              {renderCell(day, index, 'h-10 w-full rounded-md')}
-              <span className="text-xs text-gray-400">
-                {WEEKDAY_SHORT[weekdayIndex(day.date)]} {Number(day.date.slice(8, 10))}
-              </span>
-            </div>
-          ))}
-        </div>
+        renderWeeks()
       )}
 
       <p role="status" className="mt-3 min-h-5 text-xs text-gray-400">

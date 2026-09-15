@@ -10,6 +10,7 @@ import type {
   DayCount,
   FeedItem,
   PullRequest,
+  PullRequestCounts,
   PullRequestEvent,
   RangeWindows,
   RepoCount,
@@ -176,6 +177,17 @@ export function activityLevel(count: number, max: number): 0 | 1 | 2 | 3 | 4 {
   return 1
 }
 
+/** Pull requests opened and merged inside the window (Madrid days) */
+export function countPullRequests(pullRequests: PullRequest[], window: DateWindow): PullRequestCounts {
+  const opened = pullRequests.filter((pr) => isInWindow(dayOf(pr.createdAt), window))
+
+  return {
+    opened: opened.length,
+    merged: pullRequests.filter((pr) => pr.mergedAt !== null && isInWindow(dayOf(pr.mergedAt), window)).length,
+    open: opened.filter((pr) => pr.state === 'OPEN').length,
+  }
+}
+
 export function summarizeActivity(data: ActivityData, windows: RangeWindows): ActivitySummary {
   const days = bucketByDay(data.commits, windows.current)
   const total = sum(days.map((day) => day.count))
@@ -200,6 +212,7 @@ export function summarizeActivity(data: ActivityData, windows: RangeWindows): Ac
     perRepo,
     weekdays: weekdayCounts(days),
     feed: buildFeed(data, windows.current),
+    pullRequests: countPullRequests(data.pullRequests, windows.current),
     lastPreviousCommitAt: previousCommits.reduce<string | null>(
       (latest, commit) => (!latest || commit.committedAt > latest ? commit.committedAt : latest),
       null

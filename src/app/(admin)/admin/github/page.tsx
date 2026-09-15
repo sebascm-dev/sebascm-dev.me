@@ -17,11 +17,9 @@ export default async function GithubPage({ searchParams }: GithubPageProps) {
   const range = parseRange((await searchParams).range)
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-white font-[var(--font-fira-code)]">GitHub</h1>
-        <p className="mt-1 text-sm text-gray-400">Tu constancia y actividad en todos tus repositorios</p>
-      </header>
+    <div>
+      {/* The sidebar already says where you are; the heading stays for screen readers and page structure */}
+      <h1 className="sr-only">GitHub</h1>
 
       <RangeTransitionProvider>
         <div className="flex flex-wrap items-center justify-between gap-3">

@@ -39,7 +39,7 @@ export function ActivityHero({ total, previousTotal, delta, sparkline, range }: 
   return (
     <section
       aria-labelledby="activity-hero-title"
-      className="col-span-2 flex min-w-0 flex-col justify-between gap-4 rounded-xl border border-[#1a1a1a] bg-[#0d0d0d] p-5 sm:col-span-3 lg:col-span-1"
+      className="col-span-2 flex min-w-0 flex-col justify-between gap-4 rounded-xl border border-[#1a1a1a] bg-[#0d0d0d] p-5 sm:col-span-4 lg:col-span-1"
     >
       <h2 id="activity-hero-title" className="text-xs text-gray-400">
         Commits · {RANGE_LABELS[range]}

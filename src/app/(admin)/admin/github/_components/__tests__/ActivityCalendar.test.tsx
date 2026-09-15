@@ -44,9 +44,37 @@ describe('ActivityCalendar', () => {
     expect(readout).toHaveTextContent('jueves, 10 de septiembre')
   })
 
-  it('moves a week with left/right and a day with up/down', async () => {
+  it('lays out 30 days as a month calendar: weekdays as columns, weeks as rows', () => {
+    render(<ActivityCalendar days={makeDays(30)} range="30d" />)
+
+    for (const weekday of ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom']) {
+      expect(screen.getByText(weekday)).toBeInTheDocument()
+    }
+    // Each row is labelled with the Monday that starts it
+    for (const monday of ['17 ago', '24 ago', '31 ago', '7 sept', '14 sept']) {
+      expect(screen.getByText(monday)).toBeInTheDocument()
+    }
+    expect(screen.getByText('Menos')).toBeInTheDocument()
+  })
+
+  it('moves a day with left/right and a week with up/down in the month calendar', async () => {
     const user = userEvent.setup()
     render(<ActivityCalendar days={makeDays(30)} range="30d" />)
+
+    screen.getByRole('button', { name: /lunes, 7 de septiembre/ }).focus()
+    await user.keyboard('{ArrowDown}')
+    expect(screen.getByRole('button', { name: /lunes, 14 de septiembre/ })).toHaveFocus()
+
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('button', { name: /martes, 15 de septiembre/ })).toHaveFocus()
+
+    await user.keyboard('{ArrowUp}')
+    expect(screen.getByRole('button', { name: /martes, 8 de septiembre/ })).toHaveFocus()
+  })
+
+  it('moves a week with left/right and a day with up/down', async () => {
+    const user = userEvent.setup()
+    render(<ActivityCalendar days={makeDays(90)} range="90d" />)
 
     screen.getByRole('button', { name: /lunes, 7 de septiembre/ }).focus()
     await user.keyboard('{ArrowRight}')

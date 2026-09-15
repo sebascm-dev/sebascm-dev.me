@@ -69,9 +69,8 @@ describe('EmptyActivity', () => {
     expect(screen.getByText('Sin commits en los últimos 7 días')).toBeInTheDocument()
     expect(screen.getByText('Tu último commit fue el 5 de septiembre.')).toBeInTheDocument()
 
-    // 30d is the default range, so the param is dropped
     await user.click(screen.getByRole('button', { name: 'Ver 30 días' }))
-    expect(mockReplace).toHaveBeenCalledWith('/admin/github', { scroll: false })
+    expect(mockReplace).toHaveBeenCalledWith('/admin/github?range=30d', { scroll: false })
   })
 
   it('widens 30 days to 90 days', async () => {

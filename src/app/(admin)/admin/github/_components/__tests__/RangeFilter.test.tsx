@@ -56,7 +56,7 @@ describe('RangeFilter', () => {
     const user = userEvent.setup()
     renderFilter('7d')
 
-    await user.click(screen.getByRole('radio', { name: '30 días' }))
+    await user.click(screen.getByRole('radio', { name: '12 meses' }))
 
     expect(mockReplace).toHaveBeenCalledWith('/admin/github', { scroll: false })
   })
@@ -77,7 +77,8 @@ describe('RangeFilter', () => {
     screen.getByRole('radio', { name: '7 días' }).focus()
     await user.keyboard('{ArrowLeft}')
 
-    expect(mockReplace).toHaveBeenLastCalledWith('/admin/github?range=12m', { scroll: false })
+    // 12m is the default range, so the param is dropped
+    expect(mockReplace).toHaveBeenLastCalledWith('/admin/github', { scroll: false })
     expect(screen.getByRole('radio', { name: '12 meses' })).toHaveFocus()
 
     await user.keyboard('{ArrowRight}')

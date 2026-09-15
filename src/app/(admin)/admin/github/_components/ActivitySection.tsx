@@ -4,7 +4,7 @@ import { formatNumber, plural } from '@/lib/github/format'
 import { getActivityData } from '@/lib/github/queries'
 import { madridDate } from '@/lib/github/range'
 import { settle } from '@/lib/github/settle'
-import type { RangeKey } from '@/lib/github/types'
+import type { PullRequestCounts, RangeKey } from '@/lib/github/types'
 import { ActivityCalendar } from './ActivityCalendar'
 import { ActivityFeed } from './ActivityFeed'
 import { ActivityHero } from './ActivityHero'
@@ -15,6 +15,12 @@ import { SectionError } from './SectionError'
 import { LanguagesSkeleton } from './Skeletons'
 import { StatTile } from './StatTile'
 import { WeekdayChart } from './WeekdayChart'
+
+/** "2 fusionadas · 1 abierta"; the open part only appears when there is one */
+function pullRequestCaption({ merged, open }: PullRequestCounts) {
+  const mergedText = `${formatNumber(merged)} ${merged === 1 ? 'fusionada' : 'fusionadas'}`
+  return open > 0 ? `${mergedText} · ${formatNumber(open)} ${open === 1 ? 'abierta' : 'abiertas'}` : mergedText
+}
 
 /** Hero, calendar, feed and detail: everything derived from one commit list */
 export async function ActivitySection({ range }: { range: RangeKey }) {
@@ -33,8 +39,9 @@ export async function ActivitySection({ range }: { range: RangeKey }) {
 
   return (
     <div className="space-y-6">
-      {/* grid-cols-* use minmax(0, 1fr), so long content can never widen the page */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-[1.7fr_1fr_1fr_1fr]">
+      {/* grid-cols-* use minmax(0, 1fr), so long content can never widen the page.
+          Phone: hero + 2×2 tiles · tablet: hero + 4 tiles · desktop: one row */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-[1.6fr_1fr_1fr_1fr_1fr]">
         <ActivityHero
           total={summary.total}
           previousTotal={summary.previousTotal}
@@ -61,7 +68,11 @@ export async function ActivitySection({ range }: { range: RangeKey }) {
           label="Repos con commits"
           value={formatNumber(summary.reposWithCommits)}
           caption={`de ${plural(summary.totalRepos, 'repo', 'repos')}`}
-          className="col-span-2 sm:col-span-1"
+        />
+        <StatTile
+          label="Pull requests"
+          value={formatNumber(summary.pullRequests.opened)}
+          caption={pullRequestCaption(summary.pullRequests)}
         />
       </div>
 
