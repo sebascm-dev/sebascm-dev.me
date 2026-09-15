@@ -23,7 +23,7 @@ describe('ActivityCalendar', () => {
   })
 
   it('shows a legend for week-column heatmaps', () => {
-    render(<ActivityCalendar days={makeDays(90)} range="90d" />)
+    render(<ActivityCalendar days={makeDays(365)} range="12m" />)
 
     expect(screen.getByText('Menos')).toBeInTheDocument()
     expect(screen.getByText('Más')).toBeInTheDocument()
@@ -44,37 +44,52 @@ describe('ActivityCalendar', () => {
     expect(readout).toHaveTextContent('jueves, 10 de septiembre')
   })
 
-  it('lays out 30 days as a month calendar: weekdays as columns, weeks as rows', () => {
-    render(<ActivityCalendar days={makeDays(30)} range="30d" />)
+  it('draws 30 days as vertical bars scaled to the busiest day, labelled by Monday', () => {
+    render(<ActivityCalendar days={makeDays(30, { '2026-09-14': 4, '2026-09-10': 2 })} range="30d" />)
+    const barHeight = (name: RegExp) =>
+      (screen.getByRole('button', { name }).querySelector('[data-bar]') as HTMLElement).style.height
 
-    for (const weekday of ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom']) {
-      expect(screen.getByText(weekday)).toBeInTheDocument()
-    }
-    // Each row is labelled with the Monday that starts it
+    expect(screen.getAllByRole('button', { name: /commits?, / })).toHaveLength(30)
+    expect(barHeight(/14 de septiembre/)).toBe('100%')
+    expect(barHeight(/10 de septiembre/)).toBe('50%')
+    expect(barHeight(/15 de septiembre/)).toBe('0%')
+    // The scale shows the busiest day's value
+    expect(screen.getByText('4')).toBeInTheDocument()
     for (const monday of ['17 ago', '24 ago', '31 ago', '7 sept', '14 sept']) {
       expect(screen.getByText(monday)).toBeInTheDocument()
     }
-    expect(screen.getByText('Menos')).toBeInTheDocument()
+    // Height carries the value, so there is no color legend
+    expect(screen.queryByText('Menos')).not.toBeInTheDocument()
   })
 
-  it('moves a day with left/right and a week with up/down in the month calendar', async () => {
+  it('draws 90 days as vertical bars labelled by month', () => {
+    render(<ActivityCalendar days={makeDays(90, { '2026-08-03': 3 })} range="90d" />)
+
+    expect(screen.getAllByRole('button', { name: /commits?, / })).toHaveLength(90)
+    for (const month of ['jul', 'ago', 'sept']) {
+      expect(screen.getByText(month)).toBeInTheDocument()
+    }
+    expect(screen.queryByText('Menos')).not.toBeInTheDocument()
+  })
+
+  it('moves one day with left/right between bars', async () => {
     const user = userEvent.setup()
     render(<ActivityCalendar days={makeDays(30)} range="30d" />)
 
     screen.getByRole('button', { name: /lunes, 7 de septiembre/ }).focus()
-    await user.keyboard('{ArrowDown}')
-    expect(screen.getByRole('button', { name: /lunes, 14 de septiembre/ })).toHaveFocus()
-
     await user.keyboard('{ArrowRight}')
-    expect(screen.getByRole('button', { name: /martes, 15 de septiembre/ })).toHaveFocus()
-
-    await user.keyboard('{ArrowUp}')
     expect(screen.getByRole('button', { name: /martes, 8 de septiembre/ })).toHaveFocus()
+
+    await user.keyboard('{ArrowLeft}{ArrowLeft}')
+    expect(screen.getByRole('button', { name: /domingo, 6 de septiembre/ })).toHaveFocus()
+
+    await user.keyboard('{ArrowDown}')
+    expect(screen.getByRole('button', { name: /domingo, 6 de septiembre/ })).toHaveFocus()
   })
 
   it('moves a week with left/right and a day with up/down', async () => {
     const user = userEvent.setup()
-    render(<ActivityCalendar days={makeDays(90)} range="90d" />)
+    render(<ActivityCalendar days={makeDays(365)} range="12m" />)
 
     screen.getByRole('button', { name: /lunes, 7 de septiembre/ }).focus()
     await user.keyboard('{ArrowRight}')
