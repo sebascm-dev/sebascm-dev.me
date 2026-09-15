@@ -1,66 +1,50 @@
-'use client'
+import { formatNumber, plural } from '@/lib/github/format'
+import type { WeekdayCount } from '@/lib/github/types'
 
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-} from 'recharts'
-
-interface WeekdayData {
-  day: string
-  commits: number
-}
+const CHART_HEIGHT = 96
 
 interface WeekdayChartProps {
-  data: WeekdayData[]
+  weekdays: WeekdayCount[]
 }
 
-interface TooltipPayloadEntry {
-  value: number
-  name: string
-}
+/** Monday → Sunday columns; only the busiest day is labeled, every value is in the hidden list */
+export function WeekdayChart({ weekdays }: WeekdayChartProps) {
+  const max = weekdays.reduce((highest, day) => Math.max(highest, day.count), 0)
+  const peak = max > 0 ? weekdays.find((day) => day.count === max) : undefined
 
-interface CustomTooltipProps {
-  active?: boolean
-  payload?: TooltipPayloadEntry[]
-  label?: string
-}
-
-function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
-  if (!active || !payload?.length) return null
   return (
-    <div
-      className="rounded-lg border border-[#22d3ee] px-3 py-2 text-sm"
-      style={{ background: '#1a1a1a' }}
-    >
-      <p className="text-gray-400">{label}</p>
-      <p className="font-mono font-bold text-white">{payload[0].value} commits</p>
-    </div>
-  )
-}
+    <section aria-labelledby="weekday-chart-title" className="rounded-xl border border-[#1a1a1a] bg-[#0d0d0d] p-5">
+      <h2 id="weekday-chart-title" className="mb-3 text-xs text-gray-400">
+        Por día de la semana
+      </h2>
 
-export function WeekdayChart({ data }: WeekdayChartProps) {
-  return (
-    <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5 flex flex-col justify-end h-full">
-      <p className="text-xs text-gray-500 uppercase tracking-widest font-medium mb-4">
-        Commits por día
-      </p>
-      <ResponsiveContainer width="100%" height="100%" className="flex-1">
-        <BarChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-          <XAxis
-            dataKey="day"
-            tick={{ fill: '#6b7280', fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis hide />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(34,211,238,0.05)' }} />
-          <Bar dataKey="commits" fill="#22d3ee" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+      <div aria-hidden="true" className="flex items-end justify-between gap-2" style={{ height: CHART_HEIGHT + 18 }}>
+        {weekdays.map((day) => {
+          const height = day.count === 0 ? 0 : Math.max(3, Math.round((day.count / max) * CHART_HEIGHT))
+          return (
+            <div key={day.weekday} className="flex flex-1 flex-col items-center justify-end gap-1">
+              <span className={`text-[11px] text-white ${day === peak ? '' : 'invisible'}`}>{formatNumber(day.count)}</span>
+              <span className="w-full max-w-[14px] rounded-t-[4px] bg-[#22d3ee]" style={{ height }} />
+            </div>
+          )
+        })}
+      </div>
+
+      <div aria-hidden="true" className="mt-1.5 flex justify-between gap-2 border-t border-[#1f1f1f] pt-1.5 text-[11px] text-gray-400">
+        {weekdays.map((day) => (
+          <span key={day.weekday} className="flex-1 text-center">
+            {day.label}
+          </span>
+        ))}
+      </div>
+
+      <ul className="sr-only">
+        {weekdays.map((day) => (
+          <li key={day.weekday}>
+            {day.name}: {plural(day.count, 'commit', 'commits')}
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
