@@ -2,7 +2,7 @@
 import type { RangeKey, RangeWindows } from './types'
 
 export const RANGE_KEYS: readonly RangeKey[] = ['7d', '30d', '90d', '12m']
-export const DEFAULT_RANGE: RangeKey = '30d'
+export const DEFAULT_RANGE: RangeKey = '12m'
 export const TIME_ZONE = 'Europe/Madrid'
 
 export const RANGE_DAYS: Record<RangeKey, number> = {

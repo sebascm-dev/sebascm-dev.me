@@ -60,7 +60,7 @@ always agree with each other.
 |---|---|---|---|
 | D1 | Audience | Admin-only now, parts may go public later | Show private data; keep derivation reusable |
 | D2 | Page priority | Consistency over time | User's main question when opening the page |
-| D3 | Period | Range filter with presets in the URL, default `30d` | "How am I doing this month" beats a year where recent work gets lost |
+| D3 | Period | Range filter with presets in the URL, default `12m` | The year view gives the best overview; 30d, 90d and 7d stay one click away (changed from `30d` after reviewing the live page) |
 | D4 | Feed content | Commits, pull requests, new repositories and releases | Coolify deployments excluded (new secret, scope) |
 | D5 | Data source | Default-branch commit history of owned repos (GraphQL) | `contributionsCollection` hides private repos as "restricted" (174 of 227 in 12 months) and its totals disagree with the history (10 vs 15 in 30 days) |
 | D6 | Layout | Option A: hero + full-width calendar, feed (2/3) + detail (1/3), repo table last | Only option with a clear hierarchy for D2 |
@@ -114,7 +114,7 @@ the old components use are removed.
 
 ### 6.2 Range windows (`range.ts`)
 
-- Accepted values: `7d`, `30d`, `90d`, `12m`. Missing or invalid → `30d`.
+- Accepted values: `7d`, `30d`, `90d`, `12m`. Missing or invalid → `12m`.
   The default is not written to the URL.
 - Day boundaries use the **`Europe/Madrid`** time zone.
 - Current window: the last N calendar days ending today (inclusive);
