@@ -81,3 +81,18 @@ body {
 .animate-char-enter {
   animation: char-enter 130ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* Cursor propio (CustomCursor): oculta el nativo solo mientras está activo, es decir, con ratón */
+html.custom-cursor,
+html.custom-cursor * {
+  cursor: none !important;
+}
+
+/* En los campos de texto vuelve el cursor de escritura nativo */
+html.custom-cursor :is(
+    input:not([type='button'], [type='submit'], [type='reset'], [type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file']),
+    textarea,
+    [contenteditable='true']
+  ) {
+  cursor: text !important;
+}
