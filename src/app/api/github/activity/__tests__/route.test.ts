@@ -33,8 +33,10 @@ afterEach(() => {
 })
 
 describe('GET /api/github/activity', () => {
-  it('returns 52 weekly points for the last 52 weeks, without private repo names', async () => {
-    const creations: RepoCreation[] = []
+  it('returns one rolling 30-day point per day of the last year, with every repo and its creation', async () => {
+    const creations: RepoCreation[] = [
+      { repo: 'secret', isPrivate: true, url: 'https://example.com', createdAt: '2026-09-16T09:00:00Z' },
+    ]
     mockFetchHeroCommits.mockResolvedValue({
       commits: [commit('web', '2026-09-15T10:00:00Z'), commit('secret', '2026-09-15T11:00:00Z', true)],
       repoCreations: creations,
@@ -44,15 +46,20 @@ describe('GET /api/github/activity', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(mockFetchHeroCommits).toHaveBeenCalledWith({ start: '2025-09-18', end: '2026-09-16' })
-    expect(body.points).toHaveLength(52)
+    expect(mockFetchHeroCommits).toHaveBeenCalledWith({ start: '2025-08-20', end: '2026-09-16' })
+    expect(body.points).toHaveLength(364)
+    expect(body.points[0]).toMatchObject({ start: '2025-08-20', end: '2025-09-18' })
     expect(body.points.at(-1)).toMatchObject({
+      start: '2026-08-18',
       end: '2026-09-16',
       commits: 2,
-      privateCommits: 1,
-      repos: [{ name: 'web', commits: 1 }],
+      repos: [
+        { name: 'secret', commits: 1, isPrivate: true },
+        { name: 'web', commits: 1, isPrivate: false },
+      ],
+      newRepos: ['secret'],
+      dayCommits: {},
     })
-    expect(JSON.stringify(body)).not.toContain('secret')
   })
 
   it('answers 500 with an empty list when GitHub fails', async () => {

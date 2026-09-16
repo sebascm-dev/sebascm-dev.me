@@ -57,8 +57,10 @@ export default function Hero({ profile }: HeroProps) {
 
       {/* Contenido: anclado arriba para dejar libre la zona de los picos del gráfico */}
       <div className="flex-1 flex items-start">
-        <div className="w-full max-w-5xl mx-auto px-6 pt-24 sm:pt-28 pb-16 pointer-events-auto relative z-10">
-          <motion.div variants={container} initial="hidden" animate="show">
+        {/* pb-56: reserva sitio bajo los botones para el gráfico de actividad en pantallas bajas */}
+        {/* El contenedor deja pasar el ratón al gráfico; solo el contenido real lo captura */}
+        <div className="w-full max-w-5xl mx-auto px-6 pt-24 sm:pt-28 pb-56 pointer-events-none relative z-10">
+          <motion.div variants={container} initial="hidden" animate="show" className="pointer-events-auto">
 
             {/* Badge estado laboral */}
             <motion.div variants={item} className="mb-8 flex items-center gap-4">
@@ -114,8 +116,8 @@ export default function Hero({ profile }: HeroProps) {
               {tagline}
             </motion.p>
 
-            {/* CTAs + localización */}
-            <motion.div variants={item} className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            {/* CTAs + localización (data-hero-actions: el gráfico de actividad empieza justo debajo) */}
+            <motion.div data-hero-actions variants={item} className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               {profile?.cvUrl && (
                 <a
                   href="/api/cv"
