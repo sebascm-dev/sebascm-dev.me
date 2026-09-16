@@ -1,51 +1,48 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ResponsiveContainer,
   AreaChart,
   Area,
-  CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
   ReferenceDot
 } from 'recharts';
-import { IconBrandGithub } from '@tabler/icons-react';
-import { processGithubEvents } from '@/lib/github';
+import { IconBrandGithub, IconLock, IconSparkles } from '@tabler/icons-react';
+import { scaleActivity, yDomainMax, type HeroPoint, type ScaledHeroPoint } from '@/lib/github/hero';
 
-interface RepoDetail {
-  name: string;
-  totalCommits: number;
-}
-
-interface DataPoint {
-  activity: number;
-  commits: number;
-  repos: string[];
-  repoDetails: RepoDetail[];
-  date: string;
-}
-
+/** Max public repos listed in the tooltip before collapsing the rest */
+const TOOLTIP_REPO_LIMIT = 4;
 
 /** Props que Recharts pasa a un dot/shape custom */
 interface CustomShapeProps {
   cx?: number;
   cy?: number;
-  payload?: DataPoint;
+  payload?: ScaledHeroPoint;
 }
 
-/** Props que Recharts pasa a un tooltip custom */
+/** Props que Recharts pasa a un tooltip custom, más el máximo de commits para las barritas */
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: { payload: DataPoint }[];
+  payload?: { payload: ScaledHeroPoint }[];
+  maxCommits: number;
 }
 
-const CustomDot = (props: CustomShapeProps) => {
-  const { cx, cy, payload } = props;
+const dayFormatter = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+const yearFormatter = new Intl.DateTimeFormat('es-ES', { year: 'numeric', timeZone: 'UTC' });
 
-  if (!payload?.repos || payload.repos.length === 0) return null;
+/** "8 sept – 14 sept 2026": las fechas son días de calendario, se leen a mediodía UTC */
+function formatWeek(start: string, end: string): string {
+  const toDate = (day: string) => new Date(`${day}T12:00:00Z`);
+  return `${dayFormatter.format(toDate(start))} – ${dayFormatter.format(toDate(end))} ${yearFormatter.format(toDate(end))}`;
+}
+
+/** Punto brillante: semanas en las que se creó un repo público */
+const CustomDot = ({ cx, cy, payload }: CustomShapeProps) => {
+  if (cx == null || cy == null || !payload?.newRepos.length) return null;
 
   return (
     <g>
@@ -61,116 +58,103 @@ const CustomDot = (props: CustomShapeProps) => {
   );
 };
 
-const CustomActiveDot = (props: CustomShapeProps) => {
-  const { cx, cy, payload } = props;
-  const hasActivity = payload?.repos && payload.repos.length > 0;
-  if (hasActivity) return null; // Los puntos con actividad ya tienen tooltip
-  if (cx == null || cy == null) return null; // Sin coordenadas no hay nada que dibujar
-
-  const totalCommits: number = payload?.commits ?? 0;
-
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r="3.5" fill="#67e8f9" opacity="0.4" />
-      <text
-        x={cx}
-        y={cy - 10}
-        textAnchor="middle"
-        fontSize="10"
-        fontFamily="monospace"
-        fill="#67e8f9"
-        opacity="0.35"
-      >
-        {totalCommits}
-      </text>
-    </g>
-  );
+/** Punto discreto bajo el cursor; el detalle lo da el tooltip */
+const CustomActiveDot = ({ cx, cy }: CustomShapeProps) => {
+  if (cx == null || cy == null) return null;
+  return <circle cx={cx} cy={cy} r="3" fill="#67e8f9" opacity="0.5" />;
 };
 
-const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    if (!data.repos || data.repos.length === 0) return null;
+/** Exportado solo para los tests del tooltip */
+export const CustomTooltip = ({ active, payload, maxCommits }: CustomTooltipProps) => {
+  if (!active || !payload?.length) return null;
+  const week = payload[0].payload;
+  if (week.commits === 0) return null;
 
-    const repoDetails: RepoDetail[] = data.repoDetails ?? data.repos.map((name: string) => ({ name, totalCommits: 0 }));
-    const date = new Date(data.date).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-    const totalCommits = repoDetails.reduce((acc, r) => acc + r.totalCommits, 0);
+  const visibleRepos = week.repos.slice(0, TOOLTIP_REPO_LIMIT);
+  const hiddenRepos = week.repos.length - visibleRepos.length;
+  // Intensidad relativa a la mejor semana del año
+  const intensity = maxCommits > 0 ? week.commits / maxCommits : 0;
 
-    return (
-      <div className="pointer-events-none select-none" style={{ filter: 'drop-shadow(0 0 16px rgba(34,211,238,0.12))', position: 'relative', zIndex: 50 }}>
-        <div className="relative bg-[#111]/80 backdrop-blur-2xl border border-cyan-400/30 rounded-xl overflow-hidden w-56" style={{ boxShadow: '0 0 12px rgba(34,211,238,0.06), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+  return (
+    <div className="pointer-events-none select-none" style={{ filter: 'drop-shadow(0 0 16px rgba(34,211,238,0.12))', position: 'relative', zIndex: 50 }}>
+      <div className="relative bg-[#111]/80 backdrop-blur-2xl border border-cyan-400/30 rounded-xl overflow-hidden w-60" style={{ boxShadow: '0 0 12px rgba(34,211,238,0.06), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
 
-          {/* Barra superior de acento */}
-          <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
+        {/* Barra superior de acento */}
+        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
 
-          {/* Glow interno sutil */}
-          <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 to-transparent pointer-events-none" />
+        {/* Glow interno sutil */}
+        <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 to-transparent pointer-events-none" />
 
-          <div className="px-4 pt-3 pb-4 relative">
+        <div className="px-4 pt-3 pb-4 relative">
 
-            {/* Fecha */}
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#22d3ee]" />
-              <span className="text-[10px] font-semibold text-cyan-400/80 uppercase tracking-[0.18em]">
-                {date}
-              </span>
-            </div>
+          {/* Semana */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#22d3ee]" />
+            <span className="text-[10px] font-semibold text-cyan-400/80 uppercase tracking-[0.18em]">
+              {formatWeek(week.start, week.end)}
+            </span>
+          </div>
 
-            {/* Repos */}
-            <div className="space-y-1.5 mb-3">
-              {repoDetails.map((repo, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <IconBrandGithub size={13} className="text-white/30 flex-shrink-0" />
-                  <span className="text-[13px] font-semibold text-white/90 tracking-tight leading-tight truncate">
-                    {repo.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Footer — barritas de actividad + total commits */}
-            <div className="pt-2.5 border-t border-white/[0.06] flex items-center justify-between">
-              <span className="text-[10px] text-white/30 uppercase tracking-widest">Actividad</span>
-              <div className="flex items-center gap-1.5">
-                <div className="flex gap-[3px] items-end h-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-[3px] rounded-full bg-cyan-400/60"
-                      style={{ height: `${Math.min(100, (totalCommits / 150) * 100 * (0.4 + i * 0.15))}%` }}
-                    />
-                  ))}
-                </div>
-                <span className="text-[11px] font-bold text-cyan-400">{totalCommits}</span>
-                <span className="text-[10px] text-white/30">commits</span>
+          {/* Repos públicos con sus commits de esa semana */}
+          <div className="space-y-1.5 mb-3">
+            {visibleRepos.map((repo) => (
+              <div key={repo.name} className="flex items-center gap-2">
+                <IconBrandGithub size={13} className="text-white/30 flex-shrink-0" />
+                <span className="text-[13px] font-semibold text-white/90 tracking-tight leading-tight truncate">
+                  {repo.name}
+                </span>
+                {week.newRepos.includes(repo.name) && (
+                  <IconSparkles size={12} className="text-cyan-300 flex-shrink-0" aria-label="Repositorio nuevo" />
+                )}
+                <span className="ml-auto text-[11px] font-mono text-white/40">{repo.commits}</span>
               </div>
+            ))}
+            {hiddenRepos > 0 && (
+              <span className="block text-[11px] text-white/30">+{hiddenRepos} repos más</span>
+            )}
+            {week.privateCommits > 0 && (
+              <div className="flex items-center gap-2 text-white/40">
+                <IconLock size={13} className="flex-shrink-0" />
+                <span className="text-[12px]">Repos privados</span>
+                <span className="ml-auto text-[11px] font-mono">{week.privateCommits}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Footer — barritas de intensidad + total commits */}
+          <div className="pt-2.5 border-t border-white/[0.06] flex items-center justify-between">
+            <span className="text-[10px] text-white/30 uppercase tracking-widest">Semana</span>
+            <div className="flex items-center gap-1.5">
+              <div className="flex gap-[3px] items-end h-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-[3px] rounded-full bg-cyan-400/60"
+                    style={{ height: `${Math.max(15, Math.min(100, intensity * 100 * (0.4 + i * 0.15)))}%` }}
+                  />
+                ))}
+              </div>
+              <span className="text-[11px] font-bold text-cyan-400">{week.commits}</span>
+              <span className="text-[10px] text-white/30">{week.commits === 1 ? 'commit' : 'commits'}</span>
             </div>
           </div>
         </div>
       </div>
-    );
-  }
-  return null;
+    </div>
+  );
 };
 
 export default function ActivityGraph() {
-  const [data, setData] = useState<DataPoint[]>([]);
+  const [data, setData] = useState<ScaledHeroPoint[]>([]);
   const [loading, setLoading] = useState(true);
-  // Solo interesa el efecto de re-render del setter; el valor nunca se lee
-  const [, setRevealed] = useState(false);
-  const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
         const response = await fetch('/api/github/activity');
-        const json = await response.json();
-        
-        const history = json.history || [];
-        const repos = json.repos || [];
-        
-        const processedData = processGithubEvents(history, repos);
-        setData(processedData);
+        if (!response.ok) throw new Error(`Activity API responded ${response.status}`);
+        const json: { points?: HeroPoint[] } = await response.json();
+        setData(scaleActivity(json.points ?? []));
       } catch (error) {
         console.error('Error loading activity graph:', error);
       } finally {
@@ -181,14 +165,12 @@ export default function ActivityGraph() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (data.length > 0) {
-      const timer = setTimeout(() => setRevealed(true), 50);
-      return () => clearTimeout(timer);
-    }
-  }, [data]);
-
   if (loading || data.length === 0) return null;
+
+  // Techo fijo con margen: el pico nunca llega al borde superior
+  const yMax = yDomainMax(data.map((point) => point.level));
+  const maxCommits = Math.max(...data.map((point) => point.commits));
+  const last = data[data.length - 1];
 
   return (
     <>
@@ -198,9 +180,8 @@ export default function ActivityGraph() {
       animate={{ opacity: 1 }}
       transition={{ duration: 1.2, ease: 'easeIn' }}
     >
-      {/* El chart ocupa la mitad superior del hero — los picos quedan en el área libre sobre el texto */}
+      {/* El chart ocupa casi todo el hero; el margen del eje Y mantiene los picos por debajo del texto */}
       <div
-        ref={chartRef}
         className="absolute top-[10%] left-0 right-0 h-[85%] pointer-events-auto"
         style={{ overflow: 'visible' }}
       >
@@ -214,12 +195,11 @@ export default function ActivityGraph() {
               </linearGradient>
             </defs>
 
-            <CartesianGrid horizontal={false} vertical={false} />
             <XAxis hide />
-            <YAxis hide />
+            <YAxis hide domain={[0, yMax]} />
 
             <Tooltip
-              content={<CustomTooltip />}
+              content={<CustomTooltip maxCommits={maxCommits} />}
               cursor={false}
               offset={16}
               wrapperStyle={{ zIndex: 200 }}
@@ -227,7 +207,7 @@ export default function ActivityGraph() {
 
             <ReferenceDot
               x={data.length - 1}
-              y={data[data.length - 1].activity}
+              y={last.level}
               r={0}
               shape={(props: CustomShapeProps) => {
                 const { cx, cy } = props;
@@ -260,9 +240,11 @@ export default function ActivityGraph() {
               }}
             />
 
+            {/* monotoneX: curva suave que nunca se pasa de los datos (sin valles bajo cero) */}
             <Area
-              type="natural"
-              dataKey="activity"
+              type="monotoneX"
+              dataKey="level"
+              baseValue={0}
               stroke="#22d3ee"
               strokeWidth={1.2}
               strokeOpacity={0.7}
@@ -286,15 +268,14 @@ export default function ActivityGraph() {
         transition={{ duration: 6, ease: [0.4, 0, 0.2, 1] }}
       />
 
-
     </motion.div>
 
-    {/* Label Actividad en Tiempo Real — fuera del z-0 para no quedar tapado por gradients */}
+    {/* Label de la gráfica — fuera del z-0 para no quedar tapado por los gradients */}
     <div className="absolute bottom-4 right-6 flex items-center gap-2 pointer-events-none z-20">
       <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
       <span className="text-[10px] font-mono text-white/25 uppercase tracking-[0.2em]">
-        Actividad en Tiempo Real (Commits)
-</span>
+        Commits · últimas 52 semanas
+      </span>
     </div>
     </>
   );
