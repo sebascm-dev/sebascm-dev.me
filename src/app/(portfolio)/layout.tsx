@@ -1,7 +1,8 @@
-// Portfolio route group layout — Navbar + Footer + EasterEgg
+// Portfolio route group layout — Navbar + Footer + EasterEgg + cursor propio
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import EasterEggListener from '@/components/easter-egg/EasterEggListener'
+import CustomCursor from '@/components/ui/CustomCursor'
 
 export default function PortfolioLayout({
   children,
@@ -12,6 +13,7 @@ export default function PortfolioLayout({
     <>
       <Navbar />
       <EasterEggListener />
+      <CustomCursor />
       <main className="flex-1">{children}</main>
       <Footer />
     </>
