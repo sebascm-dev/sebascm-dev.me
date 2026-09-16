@@ -64,7 +64,8 @@ const CustomActiveDot = ({ cx, cy }: CustomShapeProps) => {
   return <circle cx={cx} cy={cy} r="3" fill="#67e8f9" opacity="0.5" />;
 };
 
-const CustomTooltip = ({ active, payload, maxCommits }: CustomTooltipProps) => {
+/** Exportado solo para los tests del tooltip */
+export const CustomTooltip = ({ active, payload, maxCommits }: CustomTooltipProps) => {
   if (!active || !payload?.length) return null;
   const week = payload[0].payload;
   if (week.commits === 0) return null;
