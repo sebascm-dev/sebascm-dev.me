@@ -1,14 +1,16 @@
-// Server-only. GitHub GraphQL queries for the admin dashboard.
+// Server-only. GitHub GraphQL queries for the admin dashboard and the public hero graph.
 import { cache } from 'react'
 import { getViewer, GITHUB_OWNER, githubGraphql } from './client'
-import { getRangeWindows } from './range'
+import { addDays, getRangeWindows } from './range'
 import type {
   ActivityData,
   Commit,
+  DateWindow,
   PullRequest,
   PullRequestState,
   RangeKey,
   RangeWindows,
+  RepoCreation,
   ReposData,
 } from './types'
 
@@ -146,13 +148,17 @@ interface RepoOverviewNode {
   defaultBranchRef: { target: { history?: { totalCount: number } } | null } | null
 }
 
+/** The public hero is not time-critical: one refresh per hour keeps GitHub calls low */
+const HERO_REVALIDATE_SECONDS = 3600
+
 const oldest = (dates: string[]) => dates.reduce((min, date) => (date < min ? date : min))
 
-/** Walks every page of a repository's default-branch history */
+/** Walks every page of a repository's default-branch history; `revalidate` defaults to the client's */
 async function fetchRepoHistory(
   repo: ActivityRepoNode,
   since: string,
-  authorId: string
+  authorId: string,
+  revalidate?: number
 ): Promise<{ commits: Commit[]; fetchedAt: string[] }> {
   const commits: Commit[] = []
   const fetchedAt: string[] = []
@@ -162,7 +168,8 @@ async function fetchRepoHistory(
   do {
     const result: { data: RepoHistoryResponse; fetchedAt: string } = await githubGraphql<RepoHistoryResponse>(
       REPO_HISTORY_QUERY,
-      { owner: GITHUB_OWNER, name: repo.name, since, author: authorId, after }
+      { owner: GITHUB_OWNER, name: repo.name, since, author: authorId, after },
+      revalidate
     )
     fetchedAt.push(result.fetchedAt)
 
@@ -251,6 +258,40 @@ export async function fetchActivityData(windows: RangeWindows): Promise<Activity
       pullRequestsResult.fetchedAt,
       ...histories.flatMap((history) => history.fetchedAt),
     ]),
+  }
+}
+
+/**
+ * Real commits and repo creations for the public hero graph.
+ * Skips pull requests and releases: the hero only draws commits.
+ */
+export async function fetchHeroCommits(
+  window: DateWindow
+): Promise<{ commits: Commit[]; repoCreations: RepoCreation[] }> {
+  const [viewer, reposResult] = await Promise.all([
+    getViewer(),
+    githubGraphql<{ user: { repositories: { nodes: ActivityRepoNode[] } } }>(
+      ACTIVITY_REPOS_QUERY,
+      { login: GITHUB_OWNER },
+      HERO_REVALIDATE_SECONDS
+    ),
+  ])
+  const repos = reposResult.data.user.repositories.nodes
+  // One extra day: Madrid is ahead of UTC (same reasoning as getRangeWindows)
+  const since = `${addDays(window.start, -1)}T00:00:00Z`
+
+  const histories = await Promise.all(
+    repos.filter((repo) => repo.defaultBranchRef).map((repo) => fetchRepoHistory(repo, since, viewer.id, HERO_REVALIDATE_SECONDS))
+  )
+
+  return {
+    commits: histories.flatMap((history) => history.commits),
+    repoCreations: repos.map((repo) => ({
+      repo: repo.name,
+      isPrivate: repo.isPrivate,
+      url: repo.url,
+      createdAt: repo.createdAt,
+    })),
   }
 }
 

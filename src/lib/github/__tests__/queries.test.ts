@@ -8,7 +8,7 @@ vi.mock('../client', async (importOriginal) => {
   return { ...actual, githubGraphql: mockGraphql, getViewer: mockGetViewer }
 })
 
-import { fetchActivityData, fetchReposData } from '../queries'
+import { fetchActivityData, fetchHeroCommits, fetchReposData } from '../queries'
 import { getRangeWindows } from '../range'
 
 const windows = getRangeWindows('30d', new Date('2026-09-15T10:00:00Z'))
@@ -273,5 +273,32 @@ describe('fetchReposData', () => {
     })
 
     await expect(fetchReposData()).resolves.toMatchObject({ repos: [], languages: [] })
+  })
+})
+
+describe('fetchHeroCommits', () => {
+  const heroWindow = { start: '2026-09-01', end: '2026-09-15' }
+
+  it('fetches only commit history and repo creations, starting one day early for Madrid time', async () => {
+    const result = await fetchHeroCommits(heroWindow)
+
+    const queries = mockGraphql.mock.calls.map(([query]) => String(query))
+    expect(queries.some((query) => query.includes('query PullRequests'))).toBe(false)
+
+    const sinces = mockGraphql.mock.calls
+      .filter(([query]) => String(query).includes('query RepoHistory'))
+      .map(([, variables]) => (variables as Variables).since)
+    expect(new Set(sinces)).toEqual(new Set(['2026-08-31T00:00:00Z']))
+
+    expect(result.commits.map((c) => c.oid).sort()).toEqual(['a1', 'a2', 'b1'])
+    expect(result.repoCreations.map((repo) => repo.repo)).toEqual(['alpha', 'beta', 'empty'])
+  })
+
+  it('caches every GitHub request for an hour', async () => {
+    await fetchHeroCommits(heroWindow)
+
+    const revalidates = mockGraphql.mock.calls.map(([, , revalidate]) => revalidate)
+    expect(revalidates.length).toBeGreaterThan(0)
+    expect(new Set(revalidates)).toEqual(new Set([3600]))
   })
 })
