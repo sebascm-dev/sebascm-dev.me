@@ -67,6 +67,12 @@ body {
   outline-offset: 2px;
 }
 
+/* Chrome trata las formas SVG como focuseables por click aunque no tengan tabindex;
+   sin esto, clickear la curva del hero dispara el anillo de :focus-visible de arriba. */
+.recharts-wrapper *:focus-visible {
+  outline: none;
+}
+
 @keyframes char-enter {
   from {
     opacity: 0;
