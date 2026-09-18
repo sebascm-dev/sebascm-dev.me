@@ -3,7 +3,7 @@
 import { motion, Variants } from 'framer-motion'
 import { about } from '@/data/about'
 import ActivityGraph from '@/components/ui/ActivityGraph'
-import { IconArrowDown, IconMapPin, IconDownload, IconMail } from '@tabler/icons-react'
+import { IconArrowDown, IconMapPin, IconFolderCode, IconMail } from '@tabler/icons-react'
 import type { profile as profileTable } from '@/lib/schema'
 import type { InferSelectModel } from 'drizzle-orm'
 
@@ -111,28 +111,26 @@ export default function Hero({ profile }: HeroProps) {
 
             <motion.p
               variants={item}
-              className="text-sm sm:text-base text-[var(--foreground)]/50 max-w-xl leading-relaxed mb-10"
+              className="text-sm sm:text-base text-[var(--foreground)]/50 max-w-2xl leading-relaxed mb-10"
             >
               {tagline}
             </motion.p>
 
             {/* CTAs + localización (data-hero-actions: el gráfico de actividad empieza justo debajo) */}
             <motion.div data-hero-actions variants={item} className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              {profile?.cvUrl && (
-                <a
-                  href="/api/cv"
-                  className="inline-flex items-center gap-2 justify-center px-6 py-2.5 bg-[var(--accent)] text-[var(--background)] font-semibold text-sm rounded-lg hover:opacity-90 transition-opacity"
-                >
-                  <IconDownload size={16} />
-                  Descargar CV
-                </a>
-              )}
+              <a
+                href="#proyectos"
+                className="inline-flex items-center gap-2 justify-center px-6 py-2.5 bg-[var(--accent)] text-[var(--background)] font-semibold text-sm rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <IconFolderCode size={16} />
+                Ver Proyectos
+              </a>
               <a
                 href="#contacto"
                 className="inline-flex items-center gap-2 justify-center px-6 py-2.5 border border-[var(--border)] text-[var(--foreground)]/60 font-semibold text-sm rounded-lg hover:border-[var(--accent)]/50 hover:text-[var(--accent)] transition-colors"
               >
                 <IconMail size={16} />
-                Contactar
+                Cuéntame tu Proyecto
               </a>
               <span className="hidden sm:flex items-center gap-1.5 text-[var(--foreground)]/30 text-xs ml-2">
                 <IconMapPin size={12} />
