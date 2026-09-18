@@ -52,6 +52,8 @@ const PACKAGE_TO_TECH: Record<string, string> = {
 
 export interface DetectStackResult {
   techs: string[]
+  /** La URL del "About" del repo (Website) — ahí suele estar dónde está desplegado */
+  liveUrl?: string
   error?: string
 }
 
@@ -70,6 +72,7 @@ function parseGithubUrl(url: string): { owner: string; name: string } | null {
 
 interface RepoStackQuery {
   repository: {
+    homepageUrl: string | null
     languages: { nodes: { name: string }[] } | null
     packageJson: { text: string } | null
   } | null
@@ -78,6 +81,7 @@ interface RepoStackQuery {
 const QUERY = `
   query RepoStack($owner: String!, $name: String!) {
     repository(owner: $owner, name: $name) {
+      homepageUrl
       languages(first: 10, orderBy: { field: SIZE, direction: DESC }) {
         nodes { name }
       }
@@ -132,9 +136,13 @@ export async function detectStackFromRepoUrl(url: string): Promise<DetectStackRe
     if (TECH_NAMES.has(language.name)) add(language.name)
   }
 
-  if (found.length === 0) {
+  const rawHomepage = data.repository.homepageUrl?.trim()
+  // GitHub deja guardar "celiamunozfisio.com" sin esquema — como href quedaría relativo y roto
+  const liveUrl = rawHomepage ? (/^https?:\/\//i.test(rawHomepage) ? rawHomepage : `https://${rawHomepage}`) : undefined
+
+  if (found.length === 0 && !liveUrl) {
     return { techs: [], error: packageJsonText ? 'No se reconoció ninguna tecnología conocida en ese repo.' : 'El repo no tiene package.json ni lenguajes reconocidos.' }
   }
 
-  return { techs: found }
+  return { techs: found, liveUrl }
 }

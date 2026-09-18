@@ -72,14 +72,20 @@ export function ProjectForm({ initialData }: { initialData: Project | null }) {
         toast.error(result.error ?? 'No se pudo detectar el stack.')
         return
       }
+
       const known = new Set(techStack.map((tech) => tech.toLowerCase()))
       const additions = (result.techs ?? []).filter((tech) => !known.has(tech.toLowerCase()))
-      if (additions.length === 0) {
-        toast.info('No encontré tecnologías nuevas para agregar.')
-        return
-      }
-      setTechStack([...techStack, ...additions])
-      toast.success(`Agregadas: ${additions.join(', ')}`)
+      if (additions.length > 0) setTechStack([...techStack, ...additions])
+
+      // No pisa una URL que ya hayas puesto a mano
+      const filledLiveUrl = !liveUrl.trim() && result.liveUrl
+      if (filledLiveUrl) setLiveUrl(result.liveUrl!)
+
+      const parts = []
+      if (additions.length > 0) parts.push(`stack: ${additions.join(', ')}`)
+      if (filledLiveUrl) parts.push(`URL en vivo: ${result.liveUrl}`)
+      if (parts.length > 0) toast.success(`Detectado — ${parts.join(' · ')}`)
+      else toast.info('No encontré nada nuevo para agregar.')
     })
   }
 

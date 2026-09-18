@@ -184,10 +184,11 @@ export async function deleteProjectImage(imageId: number, projectSlug: string): 
 export type DetectStackResult = {
   success: boolean
   techs?: string[]
+  liveUrl?: string
   error?: string
 }
 
-/** Lee dependencies/devDependencies y los lenguajes del repo, y devuelve las tech conocidas que encuentra */
+/** Lee dependencies/devDependencies, lenguajes y el "Website" del repo, y devuelve lo que encuentra */
 export async function detectProjectStack(repoUrl: string): Promise<DetectStackResult> {
   const admin = await getAdminUser()
   if (!admin) return { success: false, error: 'No autorizado.' }
@@ -195,5 +196,5 @@ export async function detectProjectStack(repoUrl: string): Promise<DetectStackRe
 
   const result = await detectStackFromRepoUrl(repoUrl.trim())
   if (result.error) return { success: false, error: result.error }
-  return { success: true, techs: result.techs }
+  return { success: true, techs: result.techs, liveUrl: result.liveUrl }
 }
