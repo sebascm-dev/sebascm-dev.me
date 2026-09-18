@@ -8,7 +8,7 @@ import {
   SiNestjs, SiHtml5, SiCss, SiSass, SiGit, SiGithub, SiGitlab, SiFigma, SiStripe,
   SiOpenai, SiAnthropic, SiVite, SiWebpack, SiJest, SiVitest, SiPnpm, SiNpm,
   SiYarn, SiExpo, SiFramer, SiZod, SiTrpc, SiBun, SiDeno, SiElectron, SiAstro,
-  SiRemix, SiSolid, SiSwift, SiKotlin, SiFlutter, SiDart,
+  SiRemix, SiSolid, SiSwift, SiKotlin, SiFlutter, SiDart, SiDrizzle,
 } from 'react-icons/si'
 
 export interface TechOption {
@@ -33,6 +33,7 @@ export const TECH_OPTIONS: TechOption[] = [
   { name: 'Redis', Icon: SiRedis },
   { name: 'GraphQL', Icon: SiGraphql },
   { name: 'Prisma', Icon: SiPrisma },
+  { name: 'Drizzle', Icon: SiDrizzle },
   { name: 'Vercel', Icon: SiVercel },
   { name: 'Netlify', Icon: SiNetlify },
   { name: 'Docker', Icon: SiDocker },

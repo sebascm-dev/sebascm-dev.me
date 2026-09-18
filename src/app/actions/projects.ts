@@ -6,6 +6,7 @@ import { db } from '@/lib/db'
 import { projects, projectImages } from '@/lib/schema'
 import { uploadFile, deleteFile } from '@/lib/r2'
 import { getAdminUser } from '@/lib/auth'
+import { detectStackFromRepoUrl } from '@/lib/github/detect-stack'
 
 export type ProjectActionResult = {
   success: boolean
@@ -178,4 +179,21 @@ export async function deleteProjectImage(imageId: number, projectSlug: string): 
     console.error('[deleteProjectImage error]', err)
     return { success: false, error: 'Error al borrar la imagen.' }
   }
+}
+
+export type DetectStackResult = {
+  success: boolean
+  techs?: string[]
+  error?: string
+}
+
+/** Lee dependencies/devDependencies y los lenguajes del repo, y devuelve las tech conocidas que encuentra */
+export async function detectProjectStack(repoUrl: string): Promise<DetectStackResult> {
+  const admin = await getAdminUser()
+  if (!admin) return { success: false, error: 'No autorizado.' }
+  if (!repoUrl.trim()) return { success: false, error: 'Pegá primero la URL del repositorio.' }
+
+  const result = await detectStackFromRepoUrl(repoUrl.trim())
+  if (result.error) return { success: false, error: result.error }
+  return { success: true, techs: result.techs }
 }

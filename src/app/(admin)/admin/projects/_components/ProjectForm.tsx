@@ -1,14 +1,14 @@
 'use client'
 
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useActionState, useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFormStatus } from 'react-dom'
 import Image from 'next/image'
 import {
   IconDeviceFloppy, IconLink, IconBrandGithub,
-  IconPhoto, IconAlignLeft, IconFileText,
+  IconPhoto, IconAlignLeft, IconFileText, IconWand,
 } from '@tabler/icons-react'
-import { saveProject, type ProjectActionResult } from '@/app/actions/projects'
+import { saveProject, detectProjectStack, type ProjectActionResult } from '@/app/actions/projects'
 import { toast } from '@/lib/toast'
 import { ImageGallery } from './ImageGallery'
 import { ProjectPreview } from './ProjectPreview'
@@ -63,6 +63,25 @@ export function ProjectForm({ initialData }: { initialData: Project | null }) {
   const [liveUrl, setLiveUrl] = useState(initialData?.liveUrl ?? '')
   const [repoUrl, setRepoUrl] = useState(initialData?.repoUrl ?? '')
   const [content, setContent] = useState(initialData?.content ?? '')
+  const [isDetecting, startDetecting] = useTransition()
+
+  const detectStack = () => {
+    startDetecting(async () => {
+      const result = await detectProjectStack(repoUrl)
+      if (!result.success) {
+        toast.error(result.error ?? 'No se pudo detectar el stack.')
+        return
+      }
+      const known = new Set(techStack.map((tech) => tech.toLowerCase()))
+      const additions = (result.techs ?? []).filter((tech) => !known.has(tech.toLowerCase()))
+      if (additions.length === 0) {
+        toast.info('No encontré tecnologías nuevas para agregar.')
+        return
+      }
+      setTechStack([...techStack, ...additions])
+      toast.success(`Agregadas: ${additions.join(', ')}`)
+    })
+  }
 
   useEffect(() => {
     if (state.success) {
@@ -181,9 +200,20 @@ export function ProjectForm({ initialData }: { initialData: Project | null }) {
                   </div>
                   <div className="flex flex-col gap-1 min-w-0">
                     <label className="text-xs text-gray-500 font-[var(--font-fira-code)]">Repositorio</label>
-                    <div className="relative">
-                      <IconBrandGithub size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
-                      <input type="text" name="repoUrl" value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} placeholder="https://github.com/..." className={`${inputClass} pl-8 pr-3`} />
+                    <div className="flex gap-1.5">
+                      <div className="relative flex-1 min-w-0">
+                        <IconBrandGithub size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
+                        <input type="text" name="repoUrl" value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} placeholder="https://github.com/..." className={`${inputClass} pl-8 pr-3`} />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={detectStack}
+                        disabled={isDetecting || !repoUrl.trim()}
+                        title="Detectar stack desde el repositorio"
+                        className="cursor-pointer shrink-0 inline-flex items-center justify-center w-9 rounded-lg border border-[#1a1a1a] text-gray-400 hover:text-[#22d3ee] hover:border-[#22d3ee]/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <IconWand size={15} className={isDetecting ? 'animate-pulse' : undefined} />
+                      </button>
                     </div>
                   </div>
                 </div>
