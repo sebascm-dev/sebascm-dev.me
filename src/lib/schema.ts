@@ -1,4 +1,5 @@
 import { pgTable, serial, text, varchar, integer, timestamp, boolean, date } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 
 // Perfil personal — un solo registro
 export const profile = pgTable("profile", {
@@ -45,6 +46,7 @@ export const projects = pgTable("projects", {
   description: text("description"),
   content: text("content"), // contenido del blog en markdown
   coverUrl: text("cover_url"),
+  coverKey: text("cover_key"),
   techStack: text("tech_stack").array(),
   liveUrl: text("live_url"),
   repoUrl: text("repo_url"),
@@ -52,3 +54,22 @@ export const projects = pgTable("projects", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Imágenes de un proyecto además de la portada: mockups e imágenes referenciadas desde el markdown
+export const projectImages = pgTable("project_images", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+  key: text("key").notNull(),
+  kind: varchar("kind", { length: 20 }).notNull().default("mockup"), // 'mockup' | 'content'
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const projectsRelations = relations(projects, ({ many }) => ({
+  images: many(projectImages),
+}));
+
+export const projectImagesRelations = relations(projectImages, ({ one }) => ({
+  project: one(projects, { fields: [projectImages.projectId], references: [projects.id] }),
+}));

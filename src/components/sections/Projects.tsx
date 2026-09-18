@@ -1,22 +1,29 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { projects } from '@/data/projects'
 import ProjectCard from '@/components/ui/ProjectCard'
+import type { projects } from '@/lib/schema'
+import type { InferSelectModel } from 'drizzle-orm'
 
-const featuredProjects = projects.filter((p) => p.featured)
-const displayProjects = featuredProjects.length > 0 ? featuredProjects : projects
+type Project = InferSelectModel<typeof projects>
 
-export default function Projects() {
+export default function Projects({ projects }: { projects: Project[] }) {
+  if (projects.length === 0) return null
+
   return (
-    <section id="proyectos" className="py-24 border-t border-[var(--border)] pointer-events-none relative z-10">
+    <section id="proyectos" className="py-24 border-t border-[var(--border)] pointer-events-none relative z-10 bg-[var(--background)]">
       <div className="max-w-5xl mx-auto px-6 py-24 w-full pointer-events-auto">
-        <p className="font-mono text-sm text-[var(--accent)] mb-12 tracking-widest uppercase">
-          Proyectos
-        </p>
+        <div className="mb-12">
+          <p className="font-mono text-sm text-[var(--accent)] tracking-widest uppercase">
+            Proyectos
+          </p>
+          <p className="mt-2 text-[var(--foreground)]/40 text-sm">
+            Lo último en lo que estuve trabajando.
+          </p>
+        </div>
 
         <div className="grid gap-8">
-          {displayProjects.map((project, i) => (
+          {projects.map((project, i) => (
             <motion.div
               key={project.id}
               initial={{ opacity: 0, y: 32 }}

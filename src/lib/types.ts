@@ -1,15 +1,3 @@
-export interface Project {
-  id: string
-  title: string
-  description: string
-  longDescription?: string
-  stack: string[]
-  demoUrl?: string
-  repoUrl?: string
-  featured: boolean
-  image?: string
-}
-
 export interface Skill {
   name: string
   icon: string
