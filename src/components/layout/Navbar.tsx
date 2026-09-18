@@ -28,7 +28,7 @@ export default function Navbar() {
     >
       <nav className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
         <a href="#hero" className="font-mono text-sm text-[var(--accent)] font-semibold tracking-tight">
-          sebascm<span className="text-[var(--foreground)]">.dev</span>
+          sebascm<span className="text-[var(--foreground)]">-dev</span>
         </a>
 
         {/* Desktop links */}
