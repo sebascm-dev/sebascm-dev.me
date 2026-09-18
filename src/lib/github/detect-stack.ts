@@ -1,5 +1,5 @@
 // Server-only: detecta el stack tecnológico de un repo de GitHub para precargar el picker de stack.
-import { githubGraphql, GithubAuthError, GithubRateLimitError, GithubUnavailableError } from './client'
+import { githubGraphql, parseGithubUrl, GithubAuthError, GithubRateLimitError, GithubUnavailableError } from './client'
 import { TECH_OPTIONS } from '@/lib/tech-icons'
 
 const TECH_NAMES = new Set(TECH_OPTIONS.map((tech) => tech.name))
@@ -55,19 +55,6 @@ export interface DetectStackResult {
   /** La URL del "About" del repo (Website) — ahí suele estar dónde está desplegado */
   liveUrl?: string
   error?: string
-}
-
-/** Acepta https://github.com/owner/repo, con o sin barra/.git final */
-function parseGithubUrl(url: string): { owner: string; name: string } | null {
-  try {
-    const { hostname, pathname } = new URL(url)
-    if (!hostname.endsWith('github.com')) return null
-    const [owner, rawName] = pathname.replace(/^\/+/, '').split('/')
-    if (!owner || !rawName) return null
-    return { owner, name: rawName.replace(/\.git$/, '') }
-  } catch {
-    return null
-  }
 }
 
 interface RepoStackQuery {

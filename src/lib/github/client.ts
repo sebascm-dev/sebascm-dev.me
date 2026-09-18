@@ -93,6 +93,19 @@ export async function githubGraphql<T>(
   return { data: body.data as T, fetchedAt }
 }
 
+/** Acepta https://github.com/owner/repo, con o sin barra/.git final */
+export function parseGithubUrl(url: string): { owner: string; name: string } | null {
+  try {
+    const { hostname, pathname } = new URL(url)
+    if (!hostname.endsWith('github.com')) return null
+    const [owner, rawName] = pathname.replace(/^\/+/, '').split('/')
+    if (!owner || !rawName) return null
+    return { owner, name: rawName.replace(/\.git$/, '') }
+  } catch {
+    return null
+  }
+}
+
 /** The authenticated user: its id filters commit history by author */
 export async function getViewer(): Promise<{ id: string; login: string }> {
   const { data } = await githubGraphql<{ viewer: { id: string; login: string } }>(

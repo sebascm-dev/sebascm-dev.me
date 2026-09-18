@@ -6,9 +6,9 @@ import { useFormStatus } from 'react-dom'
 import Image from 'next/image'
 import {
   IconDeviceFloppy, IconLink, IconBrandGithub,
-  IconPhoto, IconAlignLeft, IconFileText, IconWand,
+  IconPhoto, IconAlignLeft, IconFileText, IconWand, IconSparkles,
 } from '@tabler/icons-react'
-import { saveProject, detectProjectStack, type ProjectActionResult } from '@/app/actions/projects'
+import { saveProject, detectProjectStack, generateProjectFromRepo, type ProjectActionResult } from '@/app/actions/projects'
 import { toast } from '@/lib/toast'
 import { ImageGallery } from './ImageGallery'
 import { ProjectPreview } from './ProjectPreview'
@@ -55,6 +55,8 @@ export function ProjectForm({ initialData }: { initialData: Project | null }) {
 
   // Estado en vivo — solo lo que alimenta el preview de la derecha
   const [coverPreview, setCoverPreview] = useState<string | null>(initialData?.coverUrl ?? null)
+  const [coverUrl, setCoverUrl] = useState(initialData?.coverUrl ?? '')
+  const [coverKey, setCoverKey] = useState(initialData?.coverKey ?? '')
   const [slug, setSlug] = useState(initialData?.slug ?? '')
   const [slugTouched, setSlugTouched] = useState(Boolean(initialData))
   const [title, setTitle] = useState(initialData?.title ?? '')
@@ -64,6 +66,33 @@ export function ProjectForm({ initialData }: { initialData: Project | null }) {
   const [repoUrl, setRepoUrl] = useState(initialData?.repoUrl ?? '')
   const [content, setContent] = useState(initialData?.content ?? '')
   const [isDetecting, startDetecting] = useTransition()
+  const [isGenerating, startGenerating] = useTransition()
+
+  const generateFromRepo = () => {
+    startGenerating(async () => {
+      const result = await generateProjectFromRepo(repoUrl, coverKey || undefined)
+      if (!result.success) {
+        toast.error(result.error ?? 'No se pudo generar el proyecto.')
+        return
+      }
+
+      if (result.title) setTitle(result.title)
+      if (result.slug) {
+        setSlug(result.slug)
+        setSlugTouched(true)
+      }
+      if (result.description) setDescription(result.description)
+      if (result.content) setContent(result.content)
+      if (result.coverUrl && result.coverKey) {
+        setCoverPreview(result.coverUrl)
+        setCoverUrl(result.coverUrl)
+        setCoverKey(result.coverKey)
+      }
+
+      if (result.imageError) toast.warning(result.imageError)
+      else toast.success('Proyecto generado a partir del repo.')
+    })
+  }
 
   const detectStack = () => {
     startDetecting(async () => {
@@ -111,8 +140,8 @@ export function ProjectForm({ initialData }: { initialData: Project | null }) {
           <div className="overflow-y-auto flex-1 pr-3 scrollbar-thin">
             <form id={FORM_ID} action={formAction} className="space-y-6">
               {initialData && <input type="hidden" name="id" value={initialData.id} />}
-              <input type="hidden" name="existingCoverUrl" value={initialData?.coverUrl ?? ''} />
-              <input type="hidden" name="existingCoverKey" value={initialData?.coverKey ?? ''} />
+              <input type="hidden" name="existingCoverUrl" value={coverUrl} />
+              <input type="hidden" name="existingCoverKey" value={coverKey} />
 
               {/* IDENTIDAD */}
               <section className="space-y-4">
@@ -223,6 +252,16 @@ export function ProjectForm({ initialData }: { initialData: Project | null }) {
                     </div>
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={generateFromRepo}
+                  disabled={isGenerating || !repoUrl.trim()}
+                  className="cursor-pointer w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[#22d3ee]/30 bg-[#22d3ee]/5 text-[#22d3ee] text-sm font-semibold hover:bg-[#22d3ee]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <IconSparkles size={16} className={isGenerating ? 'animate-pulse' : undefined} />
+                  {isGenerating ? 'Generando (puede tardar ~30s)...' : 'Generar con IA desde el repo'}
+                </button>
 
                 <div className="flex items-center gap-3">
                   <label className="relative inline-flex items-center cursor-pointer h-[38px] w-16">

@@ -6,7 +6,7 @@ import {
   SiCloudflare, SiPython, SiDjango, SiFlask, SiFastapi, SiGo, SiRust, SiPhp,
   SiLaravel, SiRubyonrails, SiVuedotjs, SiNuxt, SiSvelte, SiAngular, SiExpress,
   SiNestjs, SiHtml5, SiCss, SiSass, SiGit, SiGithub, SiGitlab, SiFigma, SiStripe,
-  SiOpenai, SiAnthropic, SiVite, SiWebpack, SiJest, SiVitest, SiPnpm, SiNpm,
+  SiAnthropic, SiVite, SiWebpack, SiJest, SiVitest, SiPnpm, SiNpm,
   SiYarn, SiExpo, SiFramer, SiZod, SiTrpc, SiBun, SiDeno, SiElectron, SiAstro,
   SiRemix, SiSolid, SiSwift, SiKotlin, SiFlutter, SiDart, SiDrizzle,
 } from 'react-icons/si'
@@ -63,7 +63,6 @@ export const TECH_OPTIONS: TechOption[] = [
   { name: 'GitLab', Icon: SiGitlab },
   { name: 'Figma', Icon: SiFigma },
   { name: 'Stripe', Icon: SiStripe },
-  { name: 'OpenAI', Icon: SiOpenai },
   { name: 'Anthropic', Icon: SiAnthropic },
   { name: 'Vite', Icon: SiVite },
   { name: 'Webpack', Icon: SiWebpack },
