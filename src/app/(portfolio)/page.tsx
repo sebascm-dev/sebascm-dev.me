@@ -17,8 +17,8 @@ export default async function Home() {
   return (
     <>
       <Hero profile={profile} />
-      <About />
       <Projects />
+      <About />
       <Skills />
       <Contact />
     </>
