@@ -111,7 +111,7 @@ export default function Hero({ profile }: HeroProps) {
 
             <motion.p
               variants={item}
-              className="text-sm sm:text-base text-[var(--foreground)]/50 max-w-md leading-relaxed mb-10"
+              className="text-sm sm:text-base text-[var(--foreground)]/50 max-w-xl leading-relaxed mb-10"
             >
               {tagline}
             </motion.p>
