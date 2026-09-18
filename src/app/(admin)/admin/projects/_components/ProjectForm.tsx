@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation'
 import { useFormStatus } from 'react-dom'
 import Image from 'next/image'
 import {
-  IconDeviceFloppy, IconLink, IconBrandGithub, IconStack2,
+  IconDeviceFloppy, IconLink, IconBrandGithub,
   IconPhoto, IconAlignLeft, IconFileText,
 } from '@tabler/icons-react'
 import { saveProject, type ProjectActionResult } from '@/app/actions/projects'
 import { toast } from '@/lib/toast'
 import { ImageGallery } from './ImageGallery'
 import { ProjectPreview } from './ProjectPreview'
+import { TechStackPicker } from './TechStackPicker'
 import type { projects, projectImages } from '@/lib/schema'
 import type { InferSelectModel } from 'drizzle-orm'
 
@@ -28,10 +29,6 @@ function slugify(value: string): string {
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-}
-
-function parseTechStack(value: string): string[] {
-  return value.split(',').map((tech) => tech.trim()).filter(Boolean)
 }
 
 function SaveButton() {
@@ -62,7 +59,7 @@ export function ProjectForm({ initialData }: { initialData: Project | null }) {
   const [slugTouched, setSlugTouched] = useState(Boolean(initialData))
   const [title, setTitle] = useState(initialData?.title ?? '')
   const [description, setDescription] = useState(initialData?.description ?? '')
-  const [techStack, setTechStack] = useState(initialData?.techStack?.join(', ') ?? '')
+  const [techStack, setTechStack] = useState<string[]>(initialData?.techStack ?? [])
   const [liveUrl, setLiveUrl] = useState(initialData?.liveUrl ?? '')
   const [repoUrl, setRepoUrl] = useState(initialData?.repoUrl ?? '')
   const [content, setContent] = useState(initialData?.content ?? '')
@@ -70,7 +67,8 @@ export function ProjectForm({ initialData }: { initialData: Project | null }) {
   useEffect(() => {
     if (state.success) {
       toast.success('Proyecto guardado.')
-      if (!initialData) router.push('/admin/projects')
+      // Al crear, saltamos a la edición: ahí ya se puede seguir subiendo mockups e imágenes
+      if (!initialData && state.id) router.push(`/admin/projects/${state.id}`)
       else router.refresh()
     } else if (state.error) {
       toast.error(state.error)
@@ -170,19 +168,8 @@ export function ProjectForm({ initialData }: { initialData: Project | null }) {
                   />
                 </div>
 
-                <div className="flex flex-col gap-1 min-w-0">
-                  <label className="text-xs text-gray-500 font-[var(--font-fira-code)]">
-                    <span className="inline-flex items-center gap-1.5"><IconStack2 size={14} className="text-gray-600" />Stack (separado por comas)</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="techStack"
-                    value={techStack}
-                    onChange={(e) => setTechStack(e.target.value)}
-                    placeholder="Next.js, TypeScript, Supabase"
-                    className={`${inputClass} px-3`}
-                  />
-                </div>
+                <TechStackPicker value={techStack} onChange={setTechStack} />
+                <input type="hidden" name="techStack" value={techStack.join(', ')} />
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1 min-w-0">
@@ -232,31 +219,26 @@ export function ProjectForm({ initialData }: { initialData: Project | null }) {
                 />
               </section>
 
-              {/* GALERÍA — solo con el proyecto ya creado */}
-              {initialData ? (
-                <>
-                  <section className="space-y-2">
-                    <p className={sectionLabel}>Mockups</p>
-                    <ImageGallery images={mockups} projectSlug={initialData.slug} />
-                    <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-400 hover:text-[#22d3ee] transition-colors">
-                      <input type="file" name="mockupImages" accept="image/*" multiple className="hidden" onChange={(e) => e.target.form?.requestSubmit()} />
-                      + Subir mockups
-                    </label>
-                  </section>
+              {/* GALERÍA — al elegir archivos se guarda el proyecto entero (crea si hace falta) y se suben en el mismo paso */}
+              <section className="space-y-2">
+                <p className={sectionLabel}>Mockups</p>
+                {!initialData && <p className="text-xs text-gray-600">Al elegir imágenes se guarda el proyecto (necesita título) y se suben con él.</p>}
+                <ImageGallery images={mockups} projectSlug={initialData?.slug ?? slug} />
+                <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-400 hover:text-[#22d3ee] transition-colors">
+                  <input type="file" name="mockupImages" accept="image/*" multiple className="hidden" onChange={(e) => e.target.form?.requestSubmit()} />
+                  + Subir mockups
+                </label>
+              </section>
 
-                  <section className="space-y-2">
-                    <p className={sectionLabel}>Imágenes del contenido</p>
-                    <p className="text-xs text-gray-600">Subí la imagen y copiá su markdown para pegarlo donde quieras dentro del contexto de arriba.</p>
-                    <ImageGallery images={contentImages} projectSlug={initialData.slug} showCopyUrl />
-                    <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-400 hover:text-[#22d3ee] transition-colors">
-                      <input type="file" name="contentImages" accept="image/*" multiple className="hidden" onChange={(e) => e.target.form?.requestSubmit()} />
-                      + Subir imágenes
-                    </label>
-                  </section>
-                </>
-              ) : (
-                <p className="text-xs text-gray-600">Guardá el proyecto para poder subirle mockups e imágenes de contenido.</p>
-              )}
+              <section className="space-y-2">
+                <p className={sectionLabel}>Imágenes del contenido</p>
+                <p className="text-xs text-gray-600">Subí la imagen y copiá su markdown para pegarlo donde quieras dentro del contexto de arriba.</p>
+                <ImageGallery images={contentImages} projectSlug={initialData?.slug ?? slug} showCopyUrl />
+                <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-400 hover:text-[#22d3ee] transition-colors">
+                  <input type="file" name="contentImages" accept="image/*" multiple className="hidden" onChange={(e) => e.target.form?.requestSubmit()} />
+                  + Subir imágenes
+                </label>
+              </section>
             </form>
           </div>
           <SaveButton />
@@ -270,7 +252,7 @@ export function ProjectForm({ initialData }: { initialData: Project | null }) {
               title,
               slug,
               description,
-              techStack: parseTechStack(techStack),
+              techStack,
               content,
               coverPreview,
               liveUrl,

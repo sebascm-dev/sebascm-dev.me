@@ -10,6 +10,7 @@ import { getAdminUser } from '@/lib/auth'
 export type ProjectActionResult = {
   success: boolean
   error?: string
+  id?: number
 }
 
 function slugify(value: string): string {
@@ -114,7 +115,7 @@ export async function saveProject(_prevState: ProjectActionResult, formData: For
     revalidatePath('/admin/projects')
     revalidatePath('/')
     revalidatePath(`/proyectos/${slug}`)
-    return { success: true }
+    return { success: true, id: projectId! }
   } catch (err) {
     console.error('[saveProject error]', err)
     return { success: false, error: 'Error al guardar el proyecto.' }

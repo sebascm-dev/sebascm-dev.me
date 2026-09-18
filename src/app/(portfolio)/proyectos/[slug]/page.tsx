@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { IconArrowLeft, IconBrandGithub, IconArrowUpRight } from '@tabler/icons-react'
 import { getPublishedProjectBySlug } from '@/app/actions/projects'
+import { findTechIcon } from '@/lib/tech-icons'
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -34,11 +35,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
         {project.techStack && project.techStack.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6">
-            {project.techStack.map((tech) => (
-              <span key={tech} className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-wide bg-cyan-400/10 text-cyan-300/80 rounded-md">
-                {tech}
-              </span>
-            ))}
+            {project.techStack.map((tech) => {
+              const Icon = findTechIcon(tech)
+              return (
+                <span key={tech} className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-mono uppercase tracking-wide bg-cyan-400/10 text-cyan-300/80 rounded-md">
+                  {Icon && <Icon size={11} />}
+                  {tech}
+                </span>
+              )
+            })}
           </div>
         )}
 

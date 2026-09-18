@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { IconBrandGithub, IconArrowUpRight, IconFolderCode } from '@tabler/icons-react'
+import { findTechIcon } from '@/lib/tech-icons'
 import type { projects } from '@/lib/schema'
 import type { InferSelectModel } from 'drizzle-orm'
 
@@ -33,14 +34,18 @@ export default function ProjectCard({ project }: { project: Project }) {
 
         {project.techStack && project.techStack.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6">
-            {project.techStack.map((tech) => (
-              <span
-                key={tech}
-                className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-wide bg-cyan-400/10 text-cyan-300/80 rounded-md"
-              >
-                {tech}
-              </span>
-            ))}
+            {project.techStack.map((tech) => {
+              const Icon = findTechIcon(tech)
+              return (
+                <span
+                  key={tech}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-mono uppercase tracking-wide bg-cyan-400/10 text-cyan-300/80 rounded-md"
+                >
+                  {Icon && <Icon size={11} />}
+                  {tech}
+                </span>
+              )
+            })}
           </div>
         )}
 

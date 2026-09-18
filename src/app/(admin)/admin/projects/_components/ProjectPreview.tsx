@@ -2,6 +2,7 @@ import Image from 'next/image'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { IconBrandGithub, IconArrowUpRight, IconFolderCode } from '@tabler/icons-react'
+import { findTechIcon } from '@/lib/tech-icons'
 
 export interface ProjectPreviewData {
   title: string
@@ -46,11 +47,15 @@ export function ProjectPreview({ data }: { data: ProjectPreviewData }) {
 
         {data.techStack.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
-            {data.techStack.map((tech) => (
-              <span key={tech} className="px-2 py-0.5 text-[9px] font-mono uppercase tracking-wide bg-cyan-400/10 text-cyan-300/80 rounded-md">
-                {tech}
-              </span>
-            ))}
+            {data.techStack.map((tech) => {
+              const Icon = findTechIcon(tech)
+              return (
+                <span key={tech} className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-mono uppercase tracking-wide bg-cyan-400/10 text-cyan-300/80 rounded-md">
+                  {Icon && <Icon size={10} />}
+                  {tech}
+                </span>
+              )
+            })}
           </div>
         )}
 
