@@ -1,7 +1,7 @@
-// Server-only: arma un resumen del contenido de un repo (árbol + una selección de archivos)
-// para pasárselo a un modelo de texto. No pretende ser "todo el repo" literal — prioriza lo
-// que de verdad cuenta la historia del proyecto y lo acota a un presupuesto razonable.
-import { githubGraphql, parseGithubUrl, GithubAuthError, GithubRateLimitError, GithubUnavailableError } from './client'
+// Server-only: primitivas para que un modelo explore un repo por su cuenta (árbol + lectura
+// de archivos bajo demanda). node_modules/build/binarios/lockfiles se descartan del árbol
+// porque no aportan nada — más allá de eso, no se prioriza ni se acota: decide el modelo.
+import { githubGraphql, GithubAuthError, GithubRateLimitError, GithubUnavailableError } from './client'
 
 const IGNORED_DIR_SEGMENTS = new Set([
   'node_modules', '.git', 'dist', 'build', '.next', '.vercel', 'coverage',
@@ -15,14 +15,10 @@ const BINARY_EXTENSIONS = new Set([
   'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'woff', 'woff2', 'ttf',
   'eot', 'otf', 'pdf', 'zip', 'mp4', 'mp3', 'wav', 'mov', 'avif', 'bmp',
 ])
+const MAX_BLOB_SIZE_BYTES = 400_000
+const BATCH_SIZE = 15
 
-const MAX_TOTAL_CHARS = 60_000
-const MAX_FILE_CHARS = 8_000
-const MAX_FILES = 40
-const MAX_BLOB_SIZE_BYTES = 100_000
-const BATCH_SIZE = 20
-
-interface TreeEntry {
+export interface TreeEntry {
   path: string
   type: 'blob' | 'tree' | 'commit'
   size?: number
@@ -38,20 +34,7 @@ function isIgnored(path: string): boolean {
   return false
 }
 
-/** Cuanto más bajo, más prioridad — README y config primero, código de relleno al final */
-function priority(path: string): number {
-  const filename = path.split('/').pop()!.toLowerCase()
-  if (/^readme/.test(filename)) return 0
-  if (filename === 'package.json') return 1
-  if (/config\.(js|ts|mjs|cjs|json)$/.test(filename) || filename === 'tailwind.config.ts') return 2
-  if (/schema/.test(path.toLowerCase())) return 3
-  if (/\/(page|layout)\.(tsx?|jsx?|vue|svelte)$/.test(path)) return 4
-  if (path.includes('globals.css') || path.endsWith('.css')) return 4
-  if (/\/(components|lib|src)\//.test(path)) return 5
-  return 6
-}
-
-async function getDefaultBranch(owner: string, name: string): Promise<string | null> {
+export async function getDefaultBranch(owner: string, name: string): Promise<string | null> {
   const { data } = await githubGraphql<{ repository: { defaultBranchRef: { name: string } | null } | null }>(
     'query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { defaultBranchRef { name } } }',
     { owner, name },
@@ -60,7 +43,8 @@ async function getDefaultBranch(owner: string, name: string): Promise<string | n
   return data.repository?.defaultBranchRef?.name ?? null
 }
 
-async function getTree(owner: string, name: string, branch: string): Promise<TreeEntry[]> {
+/** Árbol completo del repo, ya filtrado de ruido (node_modules, binarios, lockfiles, archivos enormes) */
+export async function getFilteredTree(owner: string, name: string, branch: string): Promise<TreeEntry[]> {
   const token = process.env.GITHUB_TOKEN
   if (!token) throw new GithubAuthError('GITHUB_TOKEN is not set')
 
@@ -81,10 +65,55 @@ async function getTree(owner: string, name: string, branch: string): Promise<Tre
   if (!response.ok) throw new GithubUnavailableError(`GitHub responded ${response.status}`)
 
   const body = (await response.json()) as { tree: TreeEntry[]; truncated?: boolean }
-  return body.tree
+  return body.tree.filter((entry) => entry.type === 'blob' && !isIgnored(entry.path) && (entry.size ?? 0) <= MAX_BLOB_SIZE_BYTES)
 }
 
-async function getFileContents(owner: string, name: string, branch: string, paths: string[]): Promise<Map<string, string>> {
+/**
+ * Fecha del primer y último commit de la rama, en formato AAAA-MM — insumo para el campo
+ * "period". Vía REST: la API GraphQL de historial no soporta pedir la última página sin un
+ * cursor `before` — acá usamos el header `Link: rel="last"` (per_page=1, así que su número de
+ * página es la cantidad total de commits) para llegar directo al primer commit.
+ */
+export async function getCommitDateRange(owner: string, name: string, branch: string): Promise<{ start: string | null; end: string | null }> {
+  const token = process.env.GITHUB_TOKEN
+  if (!token) throw new GithubAuthError('GITHUB_TOKEN is not set')
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.github+json',
+    'User-Agent': 'sebascm-dev-admin',
+  }
+
+  const latestResponse = await fetch(
+    `https://api.github.com/repos/${owner}/${name}/commits?sha=${encodeURIComponent(branch)}&per_page=1`,
+    { headers, cache: 'no-store' }
+  )
+  if (!latestResponse.ok) return { start: null, end: null }
+
+  const latestCommits = (await latestResponse.json()) as { commit: { committer: { date: string } | null } }[]
+  const end = latestCommits[0]?.commit.committer?.date ?? null
+
+  const lastPageMatch = latestResponse.headers.get('link')?.match(/[?&]page=(\d+)[^>]*>;\s*rel="last"/)
+  if (!lastPageMatch) {
+    // Sin header Link — un solo commit en toda la rama
+    const yearMonth = end ? end.slice(0, 7) : null
+    return { start: yearMonth, end: yearMonth }
+  }
+
+  const firstResponse = await fetch(
+    `https://api.github.com/repos/${owner}/${name}/commits?sha=${encodeURIComponent(branch)}&per_page=1&page=${lastPageMatch[1]}`,
+    { headers, cache: 'no-store' }
+  )
+  if (!firstResponse.ok) return { start: null, end: end ? end.slice(0, 7) : null }
+
+  const firstCommits = (await firstResponse.json()) as { commit: { committer: { date: string } | null } }[]
+  const start = firstCommits[0]?.commit.committer?.date ?? null
+
+  return { start: start ? start.slice(0, 7) : null, end: end ? end.slice(0, 7) : null }
+}
+
+/** Contenido de varios archivos en una sola tanda de queries GraphQL (alias por archivo) */
+export async function getFileContents(owner: string, name: string, branch: string, paths: string[]): Promise<Map<string, string>> {
   const contents = new Map<string, string>()
 
   for (let i = 0; i < paths.length; i += BATCH_SIZE) {
@@ -107,54 +136,4 @@ async function getFileContents(owner: string, name: string, branch: string, path
   }
 
   return contents
-}
-
-export interface RepoContextResult {
-  /** Texto concatenado con encabezados por archivo, listo para pasarle a un modelo */
-  context: string
-  filesIncluded: string[]
-  error?: string
-}
-
-export async function getRepoContext(repoUrl: string): Promise<RepoContextResult> {
-  const parsed = parseGithubUrl(repoUrl)
-  if (!parsed) return { context: '', filesIncluded: [], error: 'Eso no parece una URL de GitHub (github.com/usuario/repo).' }
-
-  try {
-    const branch = await getDefaultBranch(parsed.owner, parsed.name)
-    if (!branch) return { context: '', filesIncluded: [], error: 'No se encontró ese repositorio (¿es privado y el token no tiene acceso?).' }
-
-    const tree = await getTree(parsed.owner, parsed.name, branch)
-    const candidates = tree
-      .filter((entry) => entry.type === 'blob' && !isIgnored(entry.path) && (entry.size ?? 0) <= MAX_BLOB_SIZE_BYTES)
-      .sort((a, b) => priority(a.path) - priority(b.path))
-      .slice(0, MAX_FILES)
-
-    if (candidates.length === 0) {
-      return { context: '', filesIncluded: [], error: 'No encontré archivos de texto legibles en ese repo.' }
-    }
-
-    const contents = await getFileContents(parsed.owner, parsed.name, branch, candidates.map((entry) => entry.path))
-
-    let budget = MAX_TOTAL_CHARS
-    const parts: string[] = []
-    const filesIncluded: string[] = []
-    for (const entry of candidates) {
-      const text = contents.get(entry.path)
-      if (!text || budget <= 0) continue
-      const trimmed = text.length > MAX_FILE_CHARS ? `${text.slice(0, MAX_FILE_CHARS)}\n… (truncado)` : text
-      if (trimmed.length > budget) continue
-      parts.push(`--- ${entry.path} ---\n${trimmed}`)
-      filesIncluded.push(entry.path)
-      budget -= trimmed.length
-    }
-
-    return { context: parts.join('\n\n'), filesIncluded }
-  } catch (err) {
-    if (err instanceof GithubAuthError) return { context: '', filesIncluded: [], error: 'GitHub rechazó el token de acceso.' }
-    if (err instanceof GithubRateLimitError) return { context: '', filesIncluded: [], error: 'Se alcanzó el límite de peticiones a GitHub, probá en un rato.' }
-    if (err instanceof GithubUnavailableError) return { context: '', filesIncluded: [], error: 'GitHub no respondió. ¿La URL es correcta y el repo es accesible?' }
-    console.error('[getRepoContext error]', err)
-    return { context: '', filesIncluded: [], error: 'No se pudo leer el repositorio.' }
-  }
 }

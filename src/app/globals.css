@@ -129,6 +129,118 @@ body {
   border-radius: 12px;
   border: 1px solid var(--border);
 }
+.prose-dark hr {
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+/* Tablas GFM — el wrapper con scroll lo pone el componente table custom de ReactMarkdown,
+   no el propio <table>: darle display:block al table rompe su layout de columnas nativo. */
+.prose-dark .table-wrap {
+  overflow-x: auto;
+}
+.prose-dark table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.prose-dark th, .prose-dark td {
+  padding: 0.6em 0.9em;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.prose-dark th {
+  color: var(--foreground);
+  font-weight: 600;
+  background: var(--surface);
+  white-space: nowrap;
+}
+.prose-dark tbody tr:last-child td {
+  border-bottom: none;
+}
+.prose-dark tbody tr:hover {
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+
+/* Listas de tareas GFM */
+.prose-dark ul.contains-task-list {
+  list-style: none;
+  padding-left: 0;
+}
+.prose-dark li.task-list-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+}
+.prose-dark li.task-list-item input[type='checkbox'] {
+  appearance: none;
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  margin-top: 0.35em;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  position: relative;
+  cursor: default;
+}
+.prose-dark li.task-list-item input[type='checkbox']:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.prose-dark li.task-list-item input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 0.3em;
+  top: 0.05em;
+  width: 0.3em;
+  height: 0.55em;
+  border: solid var(--background);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.prose-dark li.task-list-item:has(input:checked) {
+  color: color-mix(in srgb, var(--foreground) 45%, transparent);
+  text-decoration: line-through;
+  text-decoration-color: var(--border);
+}
+
+/* Secciones plegables */
+.prose-dark details {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9em 1.1em;
+  background: var(--surface);
+}
+.prose-dark details + details {
+  margin-top: 0.75em;
+}
+.prose-dark details[open] summary {
+  margin-bottom: 0.9em;
+}
+.prose-dark summary {
+  cursor: pointer;
+  color: var(--foreground);
+  font-weight: 600;
+  list-style: none;
+}
+.prose-dark summary::-webkit-details-marker {
+  display: none;
+}
+.prose-dark summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 0.5em;
+  color: var(--accent);
+  transition: transform 0.15s ease;
+}
+.prose-dark details[open] summary::before {
+  transform: rotate(90deg);
+}
+.prose-dark details > *:first-child {
+  margin-top: 0;
+}
 
 @keyframes char-enter {
   from {

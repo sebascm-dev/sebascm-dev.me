@@ -3,9 +3,16 @@ import Image from 'next/image'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 import { IconArrowLeft, IconBrandGithub, IconArrowUpRight } from '@tabler/icons-react'
 import { getPublishedProjectBySlug } from '@/app/actions/projects'
 import { findTechIcon } from '@/lib/tech-icons'
+import { MARKDOWN_COMPONENTS } from '@/lib/markdown-components'
+
+function formatPeriod(start: string | null, end: string | null): string | null {
+  if (!start) return null
+  return end ? `${start} — ${end}` : `${start} — actualidad`
+}
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -29,8 +36,25 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         )}
 
         <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">{project.title}</h1>
+
+        {(project.status || formatPeriod(project.periodStart, project.periodEnd)) && (
+          <p className="text-xs font-mono uppercase tracking-wide text-[var(--foreground)]/40 mb-3">
+            {[project.status, formatPeriod(project.periodStart, project.periodEnd)].filter(Boolean).join(' · ')}
+          </p>
+        )}
+
         {project.description && (
           <p className="text-[var(--foreground)]/60 text-base leading-relaxed mb-6">{project.description}</p>
+        )}
+
+        {project.highlights && project.highlights.length > 0 && (
+          <ul className="mb-6 space-y-1.5">
+            {project.highlights.map((highlight) => (
+              <li key={highlight} className="text-[var(--foreground)]/70 text-sm leading-relaxed pl-4 relative before:content-['—'] before:absolute before:left-0 before:text-[var(--accent)]">
+                {highlight}
+              </li>
+            ))}
+          </ul>
         )}
 
         {project.techStack && project.techStack.length > 0 && (
@@ -72,7 +96,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
         {project.content && (
           <div className="prose-dark">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{project.content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={MARKDOWN_COMPONENTS}>{project.content}</ReactMarkdown>
           </div>
         )}
 

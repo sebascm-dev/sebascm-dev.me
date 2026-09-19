@@ -1,18 +1,29 @@
 import Image from 'next/image'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 import { IconBrandGithub, IconArrowUpRight, IconFolderCode } from '@tabler/icons-react'
 import { findTechIcon } from '@/lib/tech-icons'
+import { MARKDOWN_COMPONENTS } from '@/lib/markdown-components'
 
 export interface ProjectPreviewData {
   title: string
   slug: string
   description: string
   techStack: string[]
+  highlights: string[]
+  status: string
+  periodStart: string
+  periodEnd: string
   content: string
   coverPreview: string | null
   liveUrl: string
   repoUrl: string
+}
+
+function formatPeriod(start: string, end: string): string | null {
+  if (!start) return null
+  return end ? `${start} — ${end}` : `${start} — actualidad`
 }
 
 /** Cómo se va a ver el proyecto publicado — misma pinta que /proyectos/[slug], en miniatura */
@@ -41,8 +52,25 @@ export function ProjectPreview({ data }: { data: ProjectPreviewData }) {
         )}
 
         <h1 className="text-xl font-bold text-white mb-2">{data.title || 'Título del proyecto'}</h1>
+
+        {(data.status || formatPeriod(data.periodStart, data.periodEnd)) && (
+          <p className="text-[10px] font-mono uppercase tracking-wide text-gray-600 mb-2">
+            {[data.status, formatPeriod(data.periodStart, data.periodEnd)].filter(Boolean).join(' · ')}
+          </p>
+        )}
+
         {data.description && (
           <p className="text-gray-500 text-sm leading-relaxed mb-4">{data.description}</p>
+        )}
+
+        {data.highlights.length > 0 && (
+          <ul className="mb-4 space-y-1">
+            {data.highlights.map((highlight) => (
+              <li key={highlight} className="text-gray-400 text-xs leading-relaxed pl-3 relative before:content-['—'] before:absolute before:left-0 before:text-[#22d3ee]">
+                {highlight}
+              </li>
+            ))}
+          </ul>
         )}
 
         {data.techStack.length > 0 && (
@@ -74,7 +102,7 @@ export function ProjectPreview({ data }: { data: ProjectPreviewData }) {
 
         {data.content && (
           <div className="prose-dark text-sm">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{data.content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={MARKDOWN_COMPONENTS}>{data.content}</ReactMarkdown>
           </div>
         )}
       </div>

@@ -7,10 +7,8 @@ import { projects, projectImages } from '@/lib/schema'
 import { uploadFile, deleteFile } from '@/lib/r2'
 import { getAdminUser } from '@/lib/auth'
 import { detectStackFromRepoUrl } from '@/lib/github/detect-stack'
-import { getRepoContext } from '@/lib/github/repo-context'
 import { parseGithubUrl } from '@/lib/github/client'
 import { generateProjectBrief } from '@/lib/ai/generate-project-brief'
-import { generateCoverImage } from '@/lib/ai/generate-cover-image'
 
 export type ProjectActionResult = {
   success: boolean
@@ -25,6 +23,11 @@ function slugify(value: string): string {
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
+}
+
+/** Un ítem por línea — usado para highlights y features en el formulario */
+function linesToArray(value: string): string[] {
+  return value.split('\n').map((line) => line.trim()).filter(Boolean)
 }
 
 // --- Lecturas ---
@@ -99,6 +102,11 @@ export async function saveProject(_prevState: ProjectActionResult, formData: For
       coverUrl,
       coverKey,
       techStack,
+      highlights: linesToArray((formData.get('highlights') as string) || ''),
+      features: linesToArray((formData.get('features') as string) || ''),
+      status: (formData.get('status') as string) || null,
+      periodStart: (formData.get('periodStart') as string) || null,
+      periodEnd: (formData.get('periodEnd') as string) || null,
       liveUrl: (formData.get('liveUrl') as string) || null,
       repoUrl: (formData.get('repoUrl') as string) || null,
       published: formData.get('published') === 'true',
@@ -208,19 +216,24 @@ export type GenerateFromRepoResult = {
   title?: string
   slug?: string
   description?: string
+  highlights?: string[]
+  features?: string[]
+  techStack?: string[]
+  status?: string
+  liveUrl?: string | null
+  periodStart?: string | null
+  periodEnd?: string | null
   content?: string
-  coverUrl?: string
-  coverKey?: string
+  mockupIdeas?: string[]
   error?: string
-  /** El texto sí se generó; solo falló la imagen — no es un error bloqueante */
-  imageError?: string
 }
 
 /**
- * Lee el repo, le pide a OpenAI título/descripción/contexto en markdown + un prompt de imagen,
- * genera la portada y la sube a R2. Si ya había una portada (currentCoverKey), la reemplaza.
+ * Lee el repo y le pide a OpenAI una ficha completa: título, descripción, highlights,
+ * funcionalidades, stack con rol, estado, período y el contexto en markdown. No genera
+ * portada — esa se sube a mano.
  */
-export async function generateProjectFromRepo(repoUrl: string, currentCoverKey?: string): Promise<GenerateFromRepoResult> {
+export async function generateProjectFromRepo(repoUrl: string, authorNotes?: string): Promise<GenerateFromRepoResult> {
   const admin = await getAdminUser()
   if (!admin) return { success: false, error: 'No autorizado.' }
   if (!repoUrl.trim()) return { success: false, error: 'Pegá primero la URL del repositorio.' }
@@ -229,41 +242,29 @@ export async function generateProjectFromRepo(repoUrl: string, currentCoverKey?:
   const parsed = parseGithubUrl(repoUrl.trim())
   if (!parsed) return { success: false, error: 'Eso no parece una URL de GitHub (github.com/usuario/repo).' }
 
-  const repoContext = await getRepoContext(repoUrl.trim())
-  if (repoContext.error) return { success: false, error: repoContext.error }
-
   let brief
   try {
-    brief = await generateProjectBrief(repoContext.context, parsed.name)
+    brief = await generateProjectBrief(repoUrl.trim(), parsed.name, authorNotes)
   } catch (err) {
     console.error('[generateProjectFromRepo brief error]', err)
-    return { success: false, error: 'Falló la generación de texto con OpenAI.' }
+    return { success: false, error: err instanceof Error ? err.message : 'Falló la generación con OpenAI.' }
   }
 
   const slug = slugify(brief.title) || slugify(parsed.name)
-
-  let coverUrl: string | undefined
-  let coverKey: string | undefined
-  let imageError: string | undefined
-  try {
-    const imageBuffer = await generateCoverImage(brief.imagePrompt)
-    const key = `proyectos/${slug}/cover-${Date.now()}.png`
-    coverUrl = await uploadFile(imageBuffer, key, 'image/png')
-    coverKey = key
-    if (currentCoverKey) await deleteFile(currentCoverKey)
-  } catch (err) {
-    console.error('[generateProjectFromRepo image error]', err)
-    imageError = 'El texto se generó bien, pero falló la imagen — probá el botón de nuevo o subí una portada a mano.'
-  }
 
   return {
     success: true,
     title: brief.title,
     slug,
     description: brief.description,
+    highlights: brief.highlights,
+    features: brief.features,
+    techStack: brief.techStack.map((tech) => tech.name),
+    status: brief.status,
+    liveUrl: brief.links.demo,
+    periodStart: brief.period.start,
+    periodEnd: brief.period.end,
     content: brief.content,
-    coverUrl,
-    coverKey,
-    imageError,
+    mockupIdeas: brief.mockupIdeas,
   }
 }

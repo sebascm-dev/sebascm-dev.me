@@ -48,6 +48,13 @@ export const projects = pgTable("projects", {
   coverUrl: text("cover_url"),
   coverKey: text("cover_key"),
   techStack: text("tech_stack").array(),
+  highlights: text("highlights").array(),
+  features: text("features").array(),
+  status: varchar("status", { length: 30 }),
+  // "AAAA-MM" en uso normal — length de sobra a propósito, es un margen de seguridad por si
+  // la IA se desvía del formato alguna vez, para que eso no tire abajo el guardado entero.
+  periodStart: varchar("period_start", { length: 20 }),
+  periodEnd: varchar("period_end", { length: 20 }),
   liveUrl: text("live_url"),
   repoUrl: text("repo_url"),
   published: boolean("published").default(false),
