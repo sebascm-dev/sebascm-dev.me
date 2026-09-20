@@ -7,17 +7,19 @@ import Skills from '@/components/sections/Skills'
 import Contact from '@/components/sections/Contact'
 import { getProfile } from '@/app/actions/profile'
 import { getRecentPublishedProjects } from '@/app/actions/projects'
+import { getSettings } from '@/app/actions/settings'
 
 export default async function Home() {
   // Render at request time instead of prerendering at build time. The database
   // lives on the internal Docker network of the VPS, which the build step is
   // not guaranteed to reach; without this, a deploy fails whenever it can't.
   await connection()
-  const [profile, projects] = await Promise.all([getProfile(), getRecentPublishedProjects(3)])
+  const [profile, projects, settings] = await Promise.all([getProfile(), getRecentPublishedProjects(3), getSettings()])
+  const activityTooltipEnabled = settings?.activityTooltipEnabled ?? true
 
   return (
     <>
-      <Hero profile={profile} />
+      <Hero profile={profile} projects={projects} activityTooltipEnabled={activityTooltipEnabled} />
       <Projects projects={projects} />
       <About />
       <Skills />

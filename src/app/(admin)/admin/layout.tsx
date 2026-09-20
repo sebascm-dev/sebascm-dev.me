@@ -5,7 +5,7 @@ import { requireAdmin } from '@/lib/auth'
 import { logout } from '@/app/actions/auth'
 import { about } from '@/data/about'
 import { getProfile } from '@/app/actions/profile'
-import { IconLogout } from '@tabler/icons-react'
+import { IconLogout, IconSettings } from '@tabler/icons-react'
 import { AdminNav } from '@/components/admin/AdminNav'
 import { Breadcrumb } from '@/components/admin/Breadcrumb'
 import { Fira_Code, Fira_Sans } from 'next/font/google'
@@ -59,8 +59,15 @@ export default async function AdminLayout({
 
         <AdminNav />
 
-        {/* Logout — pinned to bottom */}
-        <div className="px-3 py-4 border-t border-[#1a1a1a]">
+        {/* Ajustes + Logout — pinned to bottom */}
+        <div className="px-3 py-4 border-t border-[#1a1a1a] space-y-1">
+          <Link
+            href="/admin/settings"
+            className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1a] transition-colors"
+          >
+            <IconSettings size={16} />
+            Ajustes
+          </Link>
           <form action={logout}>
             <button
               type="submit"

@@ -38,6 +38,13 @@ export const profile = pgTable("profile", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Ajustes del sitio público — un solo registro, flags de features
+export const settings = pgTable("settings", {
+  id: serial("id").primaryKey(),
+  activityTooltipEnabled: boolean("activity_tooltip_enabled").default(true),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Proyectos
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),

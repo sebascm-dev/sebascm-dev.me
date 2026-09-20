@@ -413,7 +413,7 @@ export const CustomTooltip = ({ active, payload, series, focus }: CustomTooltipP
   );
 };
 
-export default function ActivityGraph() {
+export default function ActivityGraph({ tooltipEnabled = true }: { tooltipEnabled?: boolean }) {
   const [data, setData] = useState<ScaledHeroPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartTop, setChartTop] = useState<number | null>(null);
@@ -521,9 +521,10 @@ export default function ActivityGraph() {
       <div
         className="absolute left-0 right-0 bottom-[5%] pointer-events-auto"
         style={{ top: chartTop ?? '10%', overflow: 'visible' }}
-        onMouseMove={handleMouseMove}
+        // Desactivado, ni se engancha el listener: es la fuente del lag (getBoundingClientRect + estado por evento)
+        onMouseMove={tooltipEnabled ? handleMouseMove : undefined}
         // El cursor se conserva al salir: el tooltip se desvanece en su última posición
-        onMouseLeave={() => setHover(null)}
+        onMouseLeave={tooltipEnabled ? () => setHover(null) : undefined}
       >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={focusView?.chartData ?? chartData} margin={{ top: 20, right: 0, left: 0, bottom: 30 }} accessibilityLayer={false}>
@@ -543,19 +544,22 @@ export default function ActivityGraph() {
             <XAxis hide />
             <YAxis hide domain={[0, yMax]} />
 
-            <Tooltip
-              content={<CustomTooltip series={data} focus={focusActive ? focusView?.focus : null} />}
-              cursor={false}
-              // En modo portal Recharts no coloca el tooltip: se posiciona aquí con las coordenadas del cursor
-              portal={tooltipLayer}
-              wrapperStyle={{
-                zIndex: 200,
-                position: 'absolute',
-                // Recharts lo oculta de golpe; la visibilidad la controla el fundido del propio tooltip
-                visibility: 'visible',
-                ...(tooltipAt ? { left: tooltipAt.x, top: tooltipAt.y } : {}),
-              }}
-            />
+            {/* Desmontado por completo cuando está desactivado: ni Recharts hace su propio tracking interno */}
+            {tooltipEnabled && (
+              <Tooltip
+                content={<CustomTooltip series={data} focus={focusActive ? focusView?.focus : null} />}
+                cursor={false}
+                // En modo portal Recharts no coloca el tooltip: se posiciona aquí con las coordenadas del cursor
+                portal={tooltipLayer}
+                wrapperStyle={{
+                  zIndex: 200,
+                  position: 'absolute',
+                  // Recharts lo oculta de golpe; la visibilidad la controla el fundido del propio tooltip
+                  visibility: 'visible',
+                  ...(tooltipAt ? { left: tooltipAt.x, top: tooltipAt.y } : {}),
+                }}
+              />
+            )}
 
             <ReferenceDot
               x={data.length - 1}
@@ -648,7 +652,7 @@ export default function ActivityGraph() {
               dataKey="level"
               stroke="none"
               fill="none"
-              dot={<RepoMarker onHover={handleHover} />}
+              dot={<RepoMarker onHover={tooltipEnabled ? handleHover : undefined} />}
               activeDot={false}
               isAnimationActive={false}
             />
