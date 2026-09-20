@@ -90,8 +90,9 @@ export async function saveProject(_prevState: ProjectActionResult, formData: For
       if (coverKey) await deleteFile(coverKey)
       const buffer = Buffer.from(await coverFile.arrayBuffer())
       const key = `proyectos/${slug}/cover-${Date.now()}-${coverFile.name}`
-      coverUrl = await uploadFile(buffer, key, coverFile.type)
-      coverKey = key
+      const uploaded = await uploadFile(buffer, key, coverFile.type)
+      coverUrl = uploaded.url
+      coverKey = uploaded.key
     }
 
     const values = {
@@ -144,8 +145,8 @@ async function uploadGalleryFiles(formData: FormData, field: string, kind: 'mock
     if (!file || file.size === 0) continue
     const buffer = Buffer.from(await file.arrayBuffer())
     const key = `proyectos/${slug}/${kind}-${Date.now()}-${file.name}`
-    const url = await uploadFile(buffer, key, file.type)
-    await db.insert(projectImages).values({ projectId, url, key, kind, sortOrder: sortOrder++ })
+    const uploaded = await uploadFile(buffer, key, file.type)
+    await db.insert(projectImages).values({ projectId, url: uploaded.url, key: uploaded.key, kind, sortOrder: sortOrder++ })
   }
 }
 

@@ -36,8 +36,9 @@ export async function updateProfile(_prevState: ProfileActionResult, formData: F
       }
       const buffer = Buffer.from(await avatarFile.arrayBuffer())
       const key = `avatars/${Date.now()}-${avatarFile.name}`
-      avatarUrl = await uploadFile(buffer, key, avatarFile.type)
-      avatarKey = key
+      const uploaded = await uploadFile(buffer, key, avatarFile.type)
+      avatarUrl = uploaded.url
+      avatarKey = uploaded.key
     }
 
     // --- CV ---
@@ -51,8 +52,9 @@ export async function updateProfile(_prevState: ProfileActionResult, formData: F
       }
       const buffer = Buffer.from(await cvFile.arrayBuffer())
       const key = `cv/${Date.now()}-${cvFile.name}`
-      cvUrl = await uploadFile(buffer, key, cvFile.type)
-      cvKey = key
+      const uploaded = await uploadFile(buffer, key, cvFile.type)
+      cvUrl = uploaded.url
+      cvKey = uploaded.key
     }
 
     const values = {
