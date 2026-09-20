@@ -3,14 +3,18 @@
 import { motion, Variants } from 'framer-motion'
 import { about } from '@/data/about'
 import ActivityGraph from '@/components/ui/ActivityGraph'
+import HeroProjectStack from '@/components/ui/HeroProjectStack'
 import { IconArrowDown, IconMapPin, IconFolderCode, IconMail } from '@tabler/icons-react'
-import type { profile as profileTable } from '@/lib/schema'
+import type { profile as profileTable, projects as projectsTable } from '@/lib/schema'
 import type { InferSelectModel } from 'drizzle-orm'
 
 type Profile = InferSelectModel<typeof profileTable>
+type Project = InferSelectModel<typeof projectsTable>
 
 interface HeroProps {
   profile?: Profile | null
+  projects?: Project[]
+  activityTooltipEnabled?: boolean
 }
 
 const container: Variants = {
@@ -26,7 +30,7 @@ const item: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0, 0, 0.58, 1] } },
 }
 
-export default function Hero({ profile }: HeroProps) {
+export default function Hero({ profile, projects = [], activityTooltipEnabled = true }: HeroProps) {
   // Nombre: del perfil si está completo, fallback a about
   const firstName = profile?.firstName ?? about.name.split(' ')[0]
   const lastName = [profile?.lastName1, profile?.lastName2].filter(Boolean).join(' ') || about.name.split(' ').slice(1).join(' ')
@@ -49,11 +53,33 @@ export default function Hero({ profile }: HeroProps) {
       id="hero"
       className="min-h-screen flex flex-col pointer-events-none relative overflow-hidden"
     >
+      {/* Grid de fondo con "respiración" — pulso lento y sutil de opacidad */}
+      <motion.div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.035) 1px, transparent 1px)',
+          backgroundSize: '56px 56px',
+          maskImage: 'radial-gradient(ellipse 100% 100% at 50% 45%, black 55%, transparent 100%)',
+          WebkitMaskImage: 'radial-gradient(ellipse 100% 100% at 50% 45%, black 55%, transparent 100%)',
+        }}
+        animate={{ opacity: [0.3, 0.65, 0.3] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
       {/* Fades permanentes — siempre visibles desde el inicio */}
       <div className="absolute inset-x-0 top-0 h-24 pointer-events-none z-10" style={{ background: 'linear-gradient(to bottom, #0a0a0a, rgba(10,10,10,0))' }} />
       <div className="absolute inset-x-0 bottom-0 h-[40%] pointer-events-none z-10" style={{ background: 'linear-gradient(to top, #0a0a0a, rgba(10,10,10,0))' }} />
 
-      <ActivityGraph />
+      <ActivityGraph tooltipEnabled={activityTooltipEnabled} />
+
+      {/* Stack de últimos proyectos — solo en pantallas anchas, donde no pisa el texto */}
+      {projects.length > 0 && (
+        <div className="hidden xl:block absolute top-28 right-[8%] z-20 pointer-events-auto">
+          <HeroProjectStack projects={projects} />
+        </div>
+      )}
 
       {/* Contenido: anclado arriba para dejar libre la zona de los picos del gráfico */}
       <div className="flex-1 flex items-start">
@@ -61,28 +87,6 @@ export default function Hero({ profile }: HeroProps) {
         {/* El contenedor deja pasar el ratón al gráfico; solo el contenido real lo captura */}
         <div className="w-full max-w-5xl mx-auto px-6 pt-24 sm:pt-28 pb-56 pointer-events-none relative z-10">
           <motion.div variants={container} initial="hidden" animate="show" className="pointer-events-auto">
-
-            {/* Badge estado laboral */}
-            <motion.div variants={item} className="mb-8 flex items-center gap-4">
-              {available ? (
-                <>
-                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-[11px] font-medium tracking-wide">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Disponible para trabajar
-                  </span>
-                  {profile?.jobTitle && (
-                    <span className="text-[11px] text-[var(--foreground)]/35 font-medium tracking-wide">
-                      {profile.jobTitle}
-                    </span>
-                  )}
-                </>
-              ) : (
-                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded border border-sky-500/20 bg-sky-500/5 text-sky-400 text-[11px] font-medium tracking-wide">
-                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                  {profile?.jobTitle ? `Trabajando en ${profile.jobTitle}` : 'No disponible'}
-                </span>
-              )}
-            </motion.div>
 
             {/* Nombre */}
             <motion.p
@@ -111,7 +115,7 @@ export default function Hero({ profile }: HeroProps) {
 
             <motion.p
               variants={item}
-              className="text-sm sm:text-base text-[var(--foreground)]/50 max-w-2xl leading-relaxed mb-10"
+              className="text-sm sm:text-base text-[var(--foreground)]/50 max-w-2xl leading-relaxed mb-8"
             >
               {tagline}
             </motion.p>
@@ -120,15 +124,17 @@ export default function Hero({ profile }: HeroProps) {
             <motion.div data-hero-actions variants={item} className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <a
                 href="#proyectos"
-                className="inline-flex items-center gap-2 justify-center px-6 py-2.5 bg-[var(--accent)] text-[var(--background)] font-semibold text-sm rounded-lg hover:opacity-90 transition-opacity"
+                className="relative overflow-hidden inline-flex items-center gap-2 justify-center px-6 py-2.5 rounded-lg border border-[var(--accent)]/40 bg-[var(--accent)]/15 backdrop-blur-xl text-[var(--accent)] font-semibold text-sm shadow-[0_8px_24px_rgba(34,211,238,0.15)] hover:bg-[var(--accent)]/25 transition-colors"
               >
+                <div className="pointer-events-none absolute inset-x-2 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
                 <IconFolderCode size={16} />
                 Ver Proyectos
               </a>
               <a
                 href="#contacto"
-                className="inline-flex items-center gap-2 justify-center px-6 py-2.5 border border-[var(--border)] text-[var(--foreground)]/60 font-semibold text-sm rounded-lg hover:border-[var(--accent)]/50 hover:text-[var(--accent)] transition-colors"
+                className="relative overflow-hidden inline-flex items-center gap-2 justify-center px-6 py-2.5 rounded-lg border border-white/15 bg-white/[0.06] backdrop-blur-xl text-[var(--foreground)]/70 font-semibold text-sm hover:bg-white/10 hover:text-[var(--foreground)] transition-colors"
               >
+                <div className="pointer-events-none absolute inset-x-2 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
                 <IconMail size={16} />
                 Cuéntame tu Proyecto
               </a>
@@ -141,6 +147,35 @@ export default function Hero({ profile }: HeroProps) {
           </motion.div>
         </div>
       </div>
+
+      {/* Badge estado laboral — abajo a la izquierda, en línea con "Actividad en tiempo real" del otro extremo */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1, duration: 0.6 }}
+        className="absolute bottom-4 left-6 z-20 flex items-center gap-4"
+      >
+        {available ? (
+          <>
+            <span className="relative overflow-hidden inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-400/25 bg-emerald-400/10 backdrop-blur-xl text-emerald-400 text-[11px] font-medium tracking-wide">
+              <div className="pointer-events-none absolute inset-x-1.5 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Disponible para trabajar
+            </span>
+            {profile?.jobTitle && (
+              <span className="text-[11px] text-[var(--foreground)]/35 font-medium tracking-wide">
+                {profile.jobTitle}
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="relative overflow-hidden inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-sky-400/25 bg-sky-400/10 backdrop-blur-xl text-sky-400 text-[11px] font-medium tracking-wide">
+            <div className="pointer-events-none absolute inset-x-1.5 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+            {profile?.jobTitle ? `Trabajando en ${profile.jobTitle}` : 'No disponible'}
+          </span>
+        )}
+      </motion.div>
 
       {/* Indicador de scroll */}
       <motion.div

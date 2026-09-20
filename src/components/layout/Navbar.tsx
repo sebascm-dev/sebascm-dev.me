@@ -22,30 +22,12 @@ export default function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`md:hidden fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled ? 'bg-[var(--background)]/90 backdrop-blur-md border-b border-[var(--border)]' : ''
       }`}
     >
-      <nav className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-        <a href="#hero" className="font-mono text-sm text-[var(--accent)] font-semibold tracking-tight">
-          sebascm<span className="text-[var(--foreground)]">-dev</span>
-        </a>
-
-        {/* Desktop links */}
-        <ul className="hidden md:flex items-center gap-8">
-          {links.map((link) => (
-            <li key={link.href}>
-              <a
-                href={link.href}
-                className="text-sm text-[var(--foreground)]/60 hover:text-[var(--foreground)] transition-colors duration-200"
-              >
-                {link.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-
-        {/* Mobile hamburger */}
+      <nav className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-end">
+        {/* Mobile hamburger — en desktop la navegación vive en el DockNav lateral */}
         <button
           className="md:hidden flex flex-col gap-1.5 p-2"
           onClick={() => setOpen(!open)}
