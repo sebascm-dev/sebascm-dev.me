@@ -1,0 +1,10 @@
+// Public surface of the mockup editor model.
+export * from './catalog'
+export * from './state'
+export * from './render'
+export * from './interaction'
+export * from './history'
+export * from './effects'
+export * from './templates'
+export { extractPalette, buildMagicBackgrounds, analysePalette } from './palette'
+export { buildMagicLooks } from './magic'
