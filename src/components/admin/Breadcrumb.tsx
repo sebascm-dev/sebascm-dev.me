@@ -7,6 +7,7 @@ const labels: Record<string, string> = {
   '/admin/github': 'github',
   '/admin/repos': 'repos',
   '/admin/profile': 'perfil',
+  '/admin/mockups': 'mockups',
 }
 
 export function Breadcrumb() {

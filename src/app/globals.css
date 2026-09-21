@@ -57,6 +57,43 @@ body {
   scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
 }
 
+/* Scrollbar neón ultrafina (editor de mockups). Chrome 121+ ignora las reglas
+   ::-webkit-scrollbar en cuanto un elemento declara scrollbar-width o
+   scrollbar-color, así que las propiedades estándar solo se aplican en Firefox:
+   si no, Chrome pintaría la barra "thin" nativa, bastante más gruesa. */
+/* 9px de barra = 3px de color + 3px de aire a cada lado: el thumb lleva un borde
+   transparente y background-clip: padding-box, así que el color solo se pinta
+   dentro del borde y la línea queda separada del canto del panel. */
+.scrollbar-neon::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+/* El margen del track (igual al radio de rounded-2xl) hace que la barra empiece
+   y acabe donde termina la curva de la esquina, en vez de cortarse contra ella. */
+.scrollbar-neon::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 16px 0;
+}
+.scrollbar-neon::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.35);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+.scrollbar-neon::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.6);
+  background-clip: padding-box;
+}
+.scrollbar-neon::-webkit-scrollbar-corner {
+  background: transparent;
+}
+@supports (-moz-appearance: none) {
+  .scrollbar-neon {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(34, 211, 238, 0.35) transparent;
+  }
+}
+
 ::selection {
   background: var(--accent);
   color: var(--background);
